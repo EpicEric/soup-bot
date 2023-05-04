@@ -140,7 +140,7 @@ def run():
           'title': f'$time for `{tz_name}`',
           'author': {
             'name': message_author.display_name,
-            'icon_url': message_author.avatar.url,
+            'icon_url': message_author.display_avatar.url,
           },
           'footer': {
             'text': '$time is soup',
@@ -181,7 +181,7 @@ def run():
           'title': '$dinkdonk',
           'author': {
             'name': picked_member.display_name,
-            'icon_url': picked_member.avatar.url,
+            'icon_url': picked_member.display_avatar.url,
           },
           'footer': {
             'text': 'Ask not for whom the $dinkdonk tolls...',
