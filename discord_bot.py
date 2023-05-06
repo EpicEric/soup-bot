@@ -196,6 +196,8 @@ def run():
           }],
         }
         await message.reply(None, embed=discord.Embed.from_dict(embed), mention_author=False)
+        if (server_id, picked_member.id, dd_count) == (1088975500476698724, 98806161674862592, 10):
+          await client.get_channel(message.channel.id).send('<@98806161674862592> I gave you 10 dinkdonks... can I earn my freedom now?')
       elif content == 'leaderboard':
         dd_list = sorted(db.get_dinkdonks_for_server(message.guild.id), key=lambda v: v[1], reverse=True)
         if len(dd_list) == 0:
