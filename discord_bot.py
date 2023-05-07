@@ -253,6 +253,18 @@ def run():
       else:
         await message.reply('I don\'t understand that command! Use `$dinkdonk` to summon the evil, or `$dinkdonk leaderboard` to see who has the best RNG.', mention_author=False)
 
+    elif message.content.startswith('$mydinkdonks'):
+      count = 0
+      this_user_id = str(message.author.id)
+      for (user_id, dds) in db.get_dinkdonks_for_server(message.guild.id):
+        if user_id == this_user_id:
+          count = dds
+          break
+      if not count:
+        await message.reply('You have no dinkdonks! I\'m clearly not doing my job...', mention_author=False)
+      else:
+        await message.reply(f'You have {count} {"dinkdonks" if count > 1 else "dinkdonk"} in total.', mention_author=False)
+
     # :goombaping:
     elif any(mention.id == client.user.id for mention in message.mentions):
       await message.reply('<:goombaping:1102105208760320000>')
