@@ -102,8 +102,8 @@ def process_time_message(message, local_datetime_with_tz: datetime.datetime):
             datetime_from = datetime.datetime.fromisoformat(value['from']['value'])
             datetime_to = datetime.datetime.fromisoformat(value['to']['value'])
             time_interval = (datetime_from.time(), datetime_to.time())
+            # If there are multiple possibilities for hours, format as hour instead of date+hour (to remove unnecessary ambiguity)
             if time_interval in time_duplicates:
-              # If there are multiple possibilities for hours, format as hour instead of date+hour (to remove unnecessary ambiguity)
               timestamp_suffix = ':t'
             else:
               time_duplicates.add(time_interval)
@@ -111,8 +111,8 @@ def process_time_message(message, local_datetime_with_tz: datetime.datetime):
           else:
             datetime_value = datetime.datetime.fromisoformat(value['value'])
             time_value = datetime_value.time()
+            # If there are multiple possibilities for hours, format as hour instead of date+hour (to remove unnecessary ambiguity)
             if time_value in time_duplicates:
-              # If there are multiple possibilities for hours, format as hour instead of date+hour (to remove unnecessary ambiguity)
               timestamp_suffix = ':t'
             else:
               time_duplicates.add(time_value)
@@ -133,4 +133,3 @@ def process_time_message(message, local_datetime_with_tz: datetime.datetime):
     raise
   except Exception as e:
     raise ValueError(f'Error raised when processing doc "{doc}"') from e
-

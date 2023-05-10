@@ -10,6 +10,7 @@ import traceback
 import db
 import env
 import nlp
+import utils
 
 def truncate_text(text, truncate_at):
   if len(text) <= truncate_at:
@@ -199,41 +200,23 @@ def run():
         if (server_id, picked_member.id, dd_count) == (1088975500476698724, 98806161674862592, 10):
           await client.get_channel(message.channel.id).send('<@98806161674862592> I gave you 10 dinkdonks... can I earn my freedom now?')
       elif content == 'leaderboard':
-        dd_list = sorted(db.get_dinkdonks_for_server(message.guild.id), key=lambda v: v[1], reverse=True)
+        dd_list = db.get_dinkdonks_for_server(message.guild.id)
         if len(dd_list) == 0:
           await message.reply('I couldn\'t find any $dinkdonk data for this server! Has this command been executed here before...?', embed=discord.Embed.from_dict(embed), mention_author=False)
-        winners = {}
-        winners_keys = ['1st place', '2nd place', '3rd place']
-        # Build winners placements
-        current_winners_keys = winners_keys.copy()
-        current_key = current_winners_keys.pop(0)
-        current_score = 0
-        for dd in dd_list:
-          if not current_score:
-            current_score = dd[1]
-          elif dd[1] < current_score:
-            try:
-              current_key = current_winners_keys.pop(0)
-              current_score = dd[1]
-            except IndexError:
-              break
-          current_winners = winners.get(current_key, (current_score, []))
-          current_winners[1].append(dd[0])
-          winners[current_key] = current_winners
+        ranked_dd_list = utils.rank_dinkdonks(dd_list, cut_off_at_length=3)
         # Render winners placements
         fields = []
-        for k in winners_keys:
-          if k not in winners:
-            break
-          num_winners = len(winners[k][1])
+        for (i, dd) in enumerate(ranked_dd_list):
+          winners_placement = ['1st place', '2nd place', '3rd place'][i]
+          num_winners = len(dd[1])
           if num_winners > 5:
-            value = ', '.join(f'<@{winner}>' for winner in winners[k][1][:4]) + f', and {num_winners - 4} others'
+            value = ', '.join(f'<@{winner}>' for winner in dd[1][:4]) + f', and {num_winners - 4} others'
           elif num_winners > 2:
-            value = ', '.join(f'<@{winner}>' for winner in winners[k][1][:-1]) + f', and <@{winners[k][1][-1]}>'
+            value = ', '.join(f'<@{winner}>' for winner in dd[1][:-1]) + f', and <@{dd[1][-1]}>'
           else:
-            value = ' and '.join(f'<@{winner}>' for winner in winners[k][1])
+            value = ' and '.join(f'<@{winner}>' for winner in dd[1])
           fields.append({
-            'name': f'{k} - {winners[k][0]} {"dinkdonks" if winners[k][0] > 1 else "dinkdonk"}',
+            'name': f'{winners_placement} - {dd[0]} {"dinkdonks" if dd[0] > 1 else "dinkdonk"}',
             'inline': False,
             'value': value,
           })
@@ -254,16 +237,13 @@ def run():
         await message.reply('I don\'t understand that command! Use `$dinkdonk` to summon the evil, or `$dinkdonk leaderboard` to see who has the best RNG.', mention_author=False)
 
     elif message.content.startswith('$mydinkdonks'):
-      count = 0
       this_user_id = str(message.author.id)
-      for (user_id, dds) in db.get_dinkdonks_for_server(message.guild.id):
-        if user_id == this_user_id:
-          count = dds
-          break
+      dd_list = utils.rank_dinkdonks(db.get_dinkdonks_for_server(message.guild.id), cut_off_at_user_id=this_user_id)
+      count = dd_list[-1][0]
       if not count:
         await message.reply('You have no dinkdonks! I\'m clearly not doing my job...', mention_author=False)
       else:
-        await message.reply(f'You have {count} {"dinkdonks" if count > 1 else "dinkdonk"} in total.', mention_author=False)
+        await message.reply(f'You have {count} {"dinkdonks" if count > 1 else "dinkdonk"} in total. You are in {utils.getOrdinal(len(dd_list))} place.', mention_author=False)
 
     # :goombaping:
     elif any(mention.id == client.user.id for mention in message.mentions):
