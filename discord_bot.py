@@ -111,7 +111,7 @@ def run():
 
         # Process the message with NLP model
         try:
-          processed_results = nlp.process_time_message(truncate_text(content, 280), local_datetime)
+          processed_results = await nlp.process_time_message(truncate_text(content, 280), local_datetime)
         except nlp.ProcessTimeMessageException as e:
           logging.error('Failed to parse message "%s" in $time command', content)
           logging.exception(e)

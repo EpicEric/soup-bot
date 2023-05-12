@@ -1,10 +1,35 @@
+import aiohttp
 import datetime
+import json
 import logging
-from wit import Wit
+import traceback
 
 import env
 
 wit = None
+
+class Wit:
+  def __init__(self, token: str):
+    self.token = token
+
+  async def message(self, msg: str, reference_time: datetime.datetime):
+    params = {
+      'v': '20200513',
+      'q': msg[:280],
+      'context': json.dumps({'reference_time': reference_time.isoformat()}),
+    }
+    headers = {
+      'Authorization': f'Bearer {self.token}',
+      'Accept': 'application/json'
+    }
+    async with aiohttp.ClientSession() as session:
+      async with session.get('https://api.wit.ai/message', params=params, headers=headers) as r:
+        if r.status != 200:
+          raise ValueError(f'Received HTTP status {r.status}')
+        json_body = await r.json()
+        if 'error' in json_body:
+          raise ValueError(f'Received error in response: {r.dumps(json_body["error"])}')
+        return json_body
 
 ENT_DATETIME_KEY = 'wit$datetime:datetime'
 ENT_GRAIN_DATE = ['day']
@@ -26,15 +51,22 @@ def _datetime_to_timestamp(dt):
 def _string_to_datetime(string):
   return datetime.datetime.fromisoformat(string)
 
-def process_time_message(message, local_datetime_with_tz: datetime.datetime):
+async def process_time_message(message, local_datetime_with_tz: datetime.datetime):
   if not wit:
     raise ValueError('NLP not initialized!')
 
   tz = local_datetime_with_tz.tzinfo
 
-  doc = wit.message(message, context={'reference_time': local_datetime_with_tz.isoformat()})
+  try:
+    doc = await wit.message(message, local_datetime_with_tz)
+  except Exception as e:
+    logging.error('WIT API error')
+    logging.exception(e)
+    traceback.print_exc()
+    logging.error('API error: %s', doc)
+    raise ProcessTimeMessageException('The API has returned an error! Please try again later.')
 
-  if not doc or 'entities' not in doc:
+  if 'entities' not in doc:
     logging.error('API returned unknown result: %s', doc)
     raise ProcessTimeMessageException('The API has returned an error! Please try again later.')
 
