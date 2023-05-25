@@ -162,88 +162,155 @@ def run():
     elif message.content.startswith('$dinkdonk'):
       content = message.content[9:].strip()
       if not content:
-        server_id = message.guild.id
-        # Ensure that the command hasn't been used recently
-        if server_id in dinkdonk_cache:
-          next_dinkdonk = dinkdonk_cache[server_id]
-          if next_dinkdonk > message.created_at:
-            await message.reply(f'$dinkdonk is on cooldown! You\'ll get to use it again <t:{int(next_dinkdonk.timestamp())}:R>.', mention_author=False)
-            return
-        next_dd_timestamp = message.created_at + dinkdonk_cache_limit
-        dinkdonk_cache[server_id] = next_dd_timestamp
-        # Pick a random non-bot channel member
-        channel_members = [m for m in client.get_channel(message.channel.id).members if not m.bot]
-        random.seed(message.id + int(message.created_at.timestamp()))
-        picked_member = random.sample(channel_members, 1)[0]
-        # Persist increased count
-        dd_count = db.save_dinkdonk_for_user(picked_member.id, server_id)
-        embed = {
-          'color': 4321431,
-          'title': '$dinkdonk',
-          'author': {
-            'name': picked_member.display_name,
-            'icon_url': picked_member.display_avatar.url,
-          },
-          'footer': {
-            'text': 'Ask not for whom the $dinkdonk tolls...',
-            'icon_url': client.user.avatar.url,
-          },
-          'timestamp': datetime.datetime.utcnow().isoformat(),
-          'description': f'<a:DinkDonk:1102105207439110174> <@{picked_member.id}>{" (haha get rekt)" if picked_member.id == message.author.id else ""}',
-          'fields': [{
-            'name': f'The bell has tolled for thee {dd_count} {"times" if dd_count > 1 else "time"}.',
-            'inline': False,
-            'value': f'*(command will be available again <t:{int(next_dd_timestamp.timestamp())}:R>)*',
-          }],
-        }
-        await message.reply(None, embed=discord.Embed.from_dict(embed), mention_author=False)
-        if (server_id, picked_member.id, dd_count) == (1088975500476698724, 98806161674862592, 10):
-          await client.get_channel(message.channel.id).send('<@98806161674862592> I gave you 10 dinkdonks... can I earn my freedom now?')
+        try:
+          server_id = message.guild.id
+          # Ensure that the command hasn't been used recently
+          if server_id in dinkdonk_cache:
+            next_dinkdonk = dinkdonk_cache[server_id]
+            if next_dinkdonk > message.created_at:
+              await message.reply(f'$dinkdonk is on cooldown! You\'ll get to use it again <t:{int(next_dinkdonk.timestamp())}:R>.', mention_author=False)
+              return
+          next_dd_timestamp = message.created_at + dinkdonk_cache_limit
+          dinkdonk_cache[server_id] = next_dd_timestamp
+          # Pick a random non-bot channel member
+          channel_members = [m for m in client.get_channel(message.channel.id).members if not m.bot]
+          random.seed(message.id + int(message.created_at.timestamp()))
+          picked_member = random.sample(channel_members, 1)[0]
+          # Persist increased count
+          dd_count = db.save_dinkdonk_for_user(picked_member.id, server_id)
+          can_reset_dds = db.check_if_has_reset_privilege(picked_member.id, server_id)
+          value_prefix = 'This user can now reset all dinkdonks in this server with `$dinkdonk reset` while in first place!\n' if can_reset_dds else ''
+          embed = {
+            'color': 4321431,
+            'title': '$dinkdonk',
+            'author': {
+              'name': picked_member.display_name,
+              'icon_url': picked_member.display_avatar.url,
+            },
+            'footer': {
+              'text': 'Ask not for whom the $dinkdonk tolls...',
+              'icon_url': client.user.avatar.url,
+            },
+            'timestamp': datetime.datetime.utcnow().isoformat(),
+            'description': f'<a:DinkDonk:1102105207439110174> <@{picked_member.id}>{" (haha get rekt)" if picked_member.id == message.author.id else ""}',
+            'fields': [{
+              'name': f'The bell has tolled for thee {dd_count} {"times" if dd_count > 1 else "time"}.',
+              'inline': False,
+              'value': f'{value_prefix}*(command will be available again <t:{int(next_dd_timestamp.timestamp())}:R>)*',
+            }],
+          }
+          await message.reply(None, embed=discord.Embed.from_dict(embed), mention_author=False)
+        except Exception as e:
+          logging.error('Exception raised in $dinkdonk command')
+          logging.exception(e)
+          traceback.print_exc()
+          await message.reply('An unknown internal error has occurred.', mention_author=False)
       elif content == 'leaderboard':
-        dd_list = db.get_dinkdonks_for_server(message.guild.id)
-        if len(dd_list) == 0:
-          await message.reply('I couldn\'t find any $dinkdonk data for this server! Has this command been executed here before...?', embed=discord.Embed.from_dict(embed), mention_author=False)
-        ranked_dd_list = utils.rank_dinkdonks(dd_list, cut_off_at_length=3)
-        # Render winners placements
-        fields = []
-        for (i, dd) in enumerate(ranked_dd_list):
-          winners_placement = ['1st place', '2nd place', '3rd place'][i]
-          num_winners = len(dd[1])
-          if num_winners > 5:
-            value = ', '.join(f'<@{winner}>' for winner in dd[1][:4]) + f', and {num_winners - 4} others'
-          elif num_winners > 2:
-            value = ', '.join(f'<@{winner}>' for winner in dd[1][:-1]) + f', and <@{dd[1][-1]}>'
+        try:
+          dd_list = db.get_dinkdonks_for_server(message.guild.id)
+          if len(dd_list) == 0:
+            await message.reply('I couldn\'t find any $dinkdonk data for this server! Has this command been executed here before...?', embed=discord.Embed.from_dict(embed), mention_author=False)
+          ranked_dd_list = utils.rank_dinkdonks(dd_list, cut_off_at_length=3)
+          # Render winners placements
+          fields = []
+          for (i, dd) in enumerate(ranked_dd_list):
+            num_winners = len(dd[1])
+            if num_winners > 5:
+              value = ', '.join(f'<@{winner}>' for winner in dd[1][:4]) + f', and {num_winners - 4} others'
+            elif num_winners > 2:
+              value = ', '.join(f'<@{winner}>' for winner in dd[1][:-1]) + f', and <@{dd[1][-1]}>'
+            else:
+              value = ' and '.join(f'<@{winner}>' for winner in dd[1])
+            fields.append({
+              'name': f'{utils.get_ordinal(i + 1)} place - {dd[0]} {"dinkdonks" if dd[0] > 1 else "dinkdonk"}',
+              'inline': False,
+              'value': value,
+            })
+          for (i, field) in enumerate(fields):
+            field['name'] += " <a:DinkDonk:1102105207439110174>" * (len(fields) - i)
+          embed = {
+            'color': 4321431,
+            'title': '$dinkdonk leaderboard',
+            'footer': {
+              'text': 'Ask not for whom the $dinkdonk tolls...',
+              'icon_url': client.user.avatar.url,
+            },
+            'timestamp': datetime.datetime.utcnow().isoformat(),
+            'fields': fields,
+          }
+          await message.reply(None, embed=discord.Embed.from_dict(embed), mention_author=False)
+        except Exception as e:
+          logging.error('Exception raised in $dinkdonk leaderboard command')
+          logging.exception(e)
+          traceback.print_exc()
+          await message.reply('An unknown internal error has occurred.', mention_author=False)
+      elif content == 'reset':
+        try:
+          user_id = message.author.id
+          server_id = message.guild.id
+          can_reset_dds = db.check_if_has_reset_privilege(user_id, server_id)
+          if can_reset_dds:
+            timestamp = message.created_at
+            dinkdonk_cache[server_id] = message.created_at
+            dd_list = db.get_dinkdonks_for_server(server_id)
+            ranked_dd_list = utils.rank_dinkdonks(dd_list)
+            # Render winners' placements
+            fields = []
+            MAX_FIELDS = 24
+            for (i, (dd_count, dd_users)) in enumerate(ranked_dd_list[:MAX_FIELDS]):
+              if len(dd_users) > 2:
+                value = ', '.join(f'<@{winner}>' for winner in dd_users[:-1]) + f', and <@{dd_users[-1]}>'
+              else:
+                value = ' and '.join(f'<@{winner}>' for winner in dd_users)
+              fields.append({
+                'name': f'{utils.get_ordinal(i + 1)} place - {dd_count} {"dinkdonks" if dd_count > 1 else "dinkdonk"}',
+                'inline': False,
+                'value': value,
+              })
+            sum_others = sum(len(users) for (_, users) in ranked_dd_list[MAX_FIELDS:])
+            if sum_others:
+              fields.append({
+                'name': f'...and at the bottom...',
+                'inline': False,
+                'value': f'{sum_others} {"others" if sum_others > 1 else "other"} ranked lower than {utils.get_ordinal(MAX_FIELDS)} place',
+              })
+            embed = {
+              'color': 4321431,
+              'title': 'Final $dinkdonk results',
+              'footer': {
+                'text': 'Ask not for whom the $dinkdonk tolls...',
+                'icon_url': client.user.avatar.url,
+              },
+              'timestamp': datetime.datetime.utcnow().isoformat(),
+              'fields': fields,
+            }
+            await message.reply(f'$dinkdonks reset! <@{user_id}> has been awarded one dinkdonk as well. <a:DinkDonk:1102105207439110174>\n\nHere are the final results prior to reset:', embed=discord.Embed.from_dict(embed))
+            db.clear_server_dinkdonks(server_id, timestamp=timestamp)
+            db.save_dinkdonk_for_user(user_id, server_id, timestamp=timestamp)
           else:
-            value = ' and '.join(f'<@{winner}>' for winner in dd[1])
-          fields.append({
-            'name': f'{winners_placement} - {dd[0]} {"dinkdonks" if dd[0] > 1 else "dinkdonk"}',
-            'inline': False,
-            'value': value,
-          })
-        for (i, field) in enumerate(fields):
-          field['name'] += " <a:DinkDonk:1102105207439110174>" * (len(fields) - i)
-        embed = {
-          'color': 4321431,
-          'title': '$dinkdonk leaderboard',
-          'footer': {
-            'text': 'Ask not for whom the $dinkdonk tolls...',
-            'icon_url': client.user.avatar.url,
-          },
-          'timestamp': datetime.datetime.utcnow().isoformat(),
-          'fields': fields,
-        }
-        await message.reply(None, embed=discord.Embed.from_dict(embed), mention_author=False)
+            await message.reply(f'Cannot run command! You must have at least {db.DINKDONK_RESET_PRIVILEGE_MINIMUM} dinkdonks and be in first place to run this command.', mention_author=False)
+        except Exception as e:
+          logging.error('Exception raised in $dinkdonk reset command')
+          logging.exception(e)
+          traceback.print_exc()
+          await message.reply('An unknown internal error has occurred.', mention_author=False)
       else:
-        await message.reply('I don\'t understand that command! Use `$dinkdonk` to summon the evil, or `$dinkdonk leaderboard` to see who has the best RNG.', mention_author=False)
+        await message.reply('I don\'t understand that command! Use `$dinkdonk` to summon the bell, `$dinkdonk leaderboard` to see who has the best RNG, or `$dinkdonk reset` if you are able to cause a mulligan.', mention_author=False)
 
     elif message.content.startswith('$mydinkdonks'):
-      this_user_id = str(message.author.id)
-      dd_list = utils.rank_dinkdonks(db.get_dinkdonks_for_server(message.guild.id), cut_off_at_user_id=this_user_id)
-      count = dd_list[-1][0]
-      if not count:
-        await message.reply('You have no dinkdonks! I\'m clearly not doing my job...', mention_author=False)
-      else:
-        await message.reply(f'You have {count} {"dinkdonks" if count > 1 else "dinkdonk"} in total. You are in {utils.getOrdinal(len(dd_list))} place.', mention_author=False)
+      try:
+        this_user_id = str(message.author.id)
+        dd_list = utils.rank_dinkdonks(db.get_dinkdonks_for_server(message.guild.id), cut_off_at_user_id=this_user_id)
+        count = dd_list[-1][0]
+        if not count:
+          await message.reply('You have no dinkdonks! I\'m clearly not doing my job...', mention_author=False)
+        else:
+          await message.reply(f'You have {count} {"dinkdonks" if count > 1 else "dinkdonk"} in total. You are in {utils.get_ordinal(len(dd_list))} place.', mention_author=False)
+      except Exception as e:
+        logging.error('Exception raised in $dinkdonk reset command')
+        logging.exception(e)
+        traceback.print_exc()
+        await message.reply('An unknown internal error has occurred.', mention_author=False)
 
     # :goombaping:
     elif any(mention.id == client.user.id for mention in message.mentions):

@@ -1,8 +1,8 @@
 from typing import List, Tuple, Union, Optional
 
-def rank_dinkdonks(dd_list: List[Tuple[str, int]], cut_off_at_length: Optional[int]=None, cut_off_at_user_id: Union[str, int, None]=None):
+def rank_dinkdonks(dd_list: List[Tuple[str, int]], cut_off_at_length: Optional[int]=None, cut_off_at_user_id: Union[str, int, None]=None) -> List[Tuple[int, List[str]]]:
   if len(dd_list) == 0:
-    return dd_list
+    return []
   if type(cut_off_at_user_id) is int:
     cut_off_at_user_id = str(cut_off_at_user_id)
   dd_list = sorted(dd_list, key=lambda v: v[1], reverse=True)
@@ -21,7 +21,7 @@ def rank_dinkdonks(dd_list: List[Tuple[str, int]], cut_off_at_length: Optional[i
       break
   return ranked_dd_list
 
-def getOrdinal(number: int):
+def get_ordinal(number: int):
   if type(number) is not int:
     try:
       number = int(number)
