@@ -12,6 +12,9 @@ import env
 import nlp
 import utils
 
+DINKDONK_CACHE_LIMIT = datetime.timedelta(minutes=30)
+
+
 def truncate_text(text, truncate_at):
   if len(text) <= truncate_at:
     return text
@@ -25,9 +28,6 @@ def run():
   intents.members = True
 
   client = discord.Client(intents=intents)
-
-  dinkdonk_cache = {}
-  dinkdonk_cache_limit = datetime.timedelta(minutes=30)
 
   @client.event
   async def on_ready():
@@ -165,13 +165,12 @@ def run():
         try:
           server_id = message.guild.id
           # Ensure that the command hasn't been used recently
-          if server_id in dinkdonk_cache:
-            next_dinkdonk = dinkdonk_cache[server_id]
-            if next_dinkdonk > message.created_at:
-              await message.reply(f'$dinkdonk is on cooldown! You\'ll get to use it again <t:{int(next_dinkdonk.timestamp())}:R>.', mention_author=False)
-              return
-          next_dd_timestamp = message.created_at + dinkdonk_cache_limit
-          dinkdonk_cache[server_id] = next_dd_timestamp
+          next_dinkdonk = db.get_dd_cache(server_id)
+          if next_dinkdonk is not None and next_dinkdonk.timestamp() > message.created_at.timestamp():
+            await message.reply(f'$dinkdonk is on cooldown! You\'ll get to use it again <t:{int(next_dinkdonk.timestamp())}:R>.', mention_author=False)
+            return
+          next_dd_timestamp = message.created_at + DINKDONK_CACHE_LIMIT
+          db.set_dd_cache(server_id, next_dd_timestamp)
           # Pick a random non-bot channel member
           channel_members = [m for m in client.get_channel(message.channel.id).members if not m.bot]
           random.seed(message.id + int(message.created_at.timestamp()))
@@ -251,7 +250,7 @@ def run():
           can_reset_dds = db.check_if_has_reset_privilege(user_id, server_id)
           if can_reset_dds:
             timestamp = message.created_at
-            dinkdonk_cache[server_id] = message.created_at
+            db.set_dd_cache(server_id, None)
             dd_list = db.get_dinkdonks_for_server(server_id)
             ranked_dd_list = utils.rank_dinkdonks(dd_list)
             # Render winners' placements

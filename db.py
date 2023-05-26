@@ -1,6 +1,6 @@
 import datetime
 import sqlite3
-import typing
+from typing import Optional
 
 DINKDONK_RESET_PRIVILEGE_MINIMUM = 50
 
@@ -11,7 +11,7 @@ def init():
   global conn
   conn = sqlite3.connect('discord_bot.db')
 
-def set_timezone_for_user_id(user_id: int, tz: typing.Optional[str], timestamp: typing.Optional[datetime.datetime] = None):
+def set_timezone_for_user_id(user_id: int, tz: Optional[str], timestamp: Optional[datetime.datetime] = None):
   if not conn:
     raise ValueError('DB not initialized!')
   if not timestamp:
@@ -23,7 +23,7 @@ def set_timezone_for_user_id(user_id: int, tz: typing.Optional[str], timestamp: 
     cur.execute('INSERT INTO users (id, tz, last_modified) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET tz = excluded.tz, last_modified = excluded.last_modified', (str(user_id), tz, timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')))
     cur.close()
 
-def get_timezone_for_user_id(user_id: int) -> typing.Optional[str]:
+def get_timezone_for_user_id(user_id: int) -> Optional[str]:
   if not conn:
     raise ValueError('DB not initialized!')
   with conn:
@@ -33,7 +33,7 @@ def get_timezone_for_user_id(user_id: int) -> typing.Optional[str]:
     cur.close()
     return value[0] if value else None
 
-def save_dinkdonk_for_user(user_id: int, server_id: int, timestamp: typing.Optional[datetime.datetime] = None):
+def save_dinkdonk_for_user(user_id: int, server_id: int, timestamp: Optional[datetime.datetime] = None):
   if not conn:
     raise ValueError('DB not initialized!')
   if not timestamp:
@@ -68,7 +68,7 @@ def check_if_has_reset_privilege(user_id: int, server_id: int) -> bool:
     cur.close()
     if len(values) == 0:
       return False
-    max_user_id, max_count  = values[0]
+    max_user_id, max_count = values[0]
     for curr_user_id, curr_count in values[1:]:
       if curr_count > max_count:
         if max_user_id == str(user_id):
@@ -78,7 +78,7 @@ def check_if_has_reset_privilege(user_id: int, server_id: int) -> bool:
         max_user_id = curr_user_id
     return max_user_id == str(user_id)
 
-def clear_server_dinkdonks(server_id: int, timestamp: typing.Optional[datetime.datetime] = None):
+def clear_server_dinkdonks(server_id: int, timestamp: Optional[datetime.datetime] = None):
   if not conn:
     raise ValueError('DB not initialized!')
   if not timestamp:
@@ -88,4 +88,24 @@ def clear_server_dinkdonks(server_id: int, timestamp: typing.Optional[datetime.d
   with conn:
     cur = conn.cursor()
     cur.execute('UPDATE dinkdonk SET count = 0, last_modified = ? WHERE server_id = ?', (timestamp.strftime('%Y-%m-%dT%H:%M:%SZ'), str(server_id)))
+    cur.close()
+
+def get_dd_cache(server_id: int) -> Optional[datetime.datetime]:
+  if not conn:
+    raise ValueError('DB not initialized!')
+  with conn:
+    cur = conn.cursor()
+    res = cur.execute('SELECT value FROM dinkdonk_cache WHERE server_id = ?', (str(server_id),))
+    value = res.fetchone()
+    cur.close()
+    if value and value[0]:
+      return datetime.datetime.fromtimestamp(value[0])
+    return None
+
+def set_dd_cache(server_id: int, value: Optional[datetime.datetime]):
+  if not conn:
+    raise ValueError('DB not initialized!')
+  with conn:
+    cur = conn.cursor()
+    cur.execute('INSERT INTO dinkdonk_cache (server_id, value) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET value = excluded.value', (str(server_id), int(value.timestamp()) if value else None))
     cur.close()
