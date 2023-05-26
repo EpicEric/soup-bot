@@ -300,10 +300,10 @@ def run():
       try:
         this_user_id = str(message.author.id)
         dd_list = utils.rank_dinkdonks(db.get_dinkdonks_for_server(message.guild.id), cut_off_at_user_id=this_user_id)
-        count = dd_list[-1][0]
-        if not count:
+        if this_user_id not in dd_list[-1][1]:
           await message.reply('You have no dinkdonks! I\'m clearly not doing my job...', mention_author=False)
         else:
+          count = dd_list[-1][0]
           await message.reply(f'You have {count} {"dinkdonks" if count > 1 else "dinkdonk"} in total. You are in {utils.get_ordinal(len(dd_list))} place.', mention_author=False)
       except Exception as e:
         logging.error('Exception raised in $dinkdonk reset command')
