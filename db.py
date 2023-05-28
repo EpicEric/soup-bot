@@ -62,6 +62,7 @@ def check_if_has_reset_privilege(user_id: int, server_id: int) -> bool:
   if not conn:
     raise ValueError('DB not initialized!')
   with conn:
+    user_id = str(user_id)
     cur = conn.cursor()
     res = cur.execute('SELECT user_id, count FROM dinkdonk WHERE server_id = ? AND count >= ?', (str(server_id), DINKDONK_RESET_PRIVILEGE_MINIMUM))
     values = res.fetchall()
@@ -70,13 +71,17 @@ def check_if_has_reset_privilege(user_id: int, server_id: int) -> bool:
       return False
     max_user_id, max_count = values[0]
     for curr_user_id, curr_count in values[1:]:
-      if curr_count > max_count:
-        if max_user_id == str(user_id):
+      if curr_count >= max_count:
+        # Check if our user was found before, in which case, someone else is higher or tied
+        if max_user_id == user_id:
           return False
-        max_user_id, max_count = curr_user_id, curr_count
-      elif curr_count == max_count and curr_user_id == str(user_id):
-        max_user_id = curr_user_id
-    return max_user_id == str(user_id)
+        # If it's a higher count, consider that user + count instead
+        if curr_count > max_count:
+          max_user_id, max_count = curr_user_id, curr_count
+        # If it's not a higher count, but it is our user, then they're tied, therefore ineligible for a reset
+        elif curr_user_id == user_id:
+          return False
+    return max_user_id == user_id
 
 def clear_server_dinkdonks(server_id: int, timestamp: Optional[datetime.datetime] = None):
   if not conn:

@@ -178,7 +178,7 @@ def run():
           # Persist increased count
           dd_count = db.save_dinkdonk_for_user(picked_member.id, server_id)
           can_reset_dds = db.check_if_has_reset_privilege(picked_member.id, server_id)
-          value_prefix = 'This user can now reset all dinkdonks in this server with `$dinkdonk reset` while in first place!\n' if can_reset_dds else ''
+          value_prefix = 'This user can now reset all dinkdonks in this server with `$dinkdonk reset` while alone in first place!\n' if can_reset_dds else ''
           embed = {
             'color': 4321431,
             'title': '$dinkdonk',
@@ -287,14 +287,14 @@ def run():
             db.clear_server_dinkdonks(server_id, timestamp=timestamp)
             db.save_dinkdonk_for_user(user_id, server_id, timestamp=timestamp)
           else:
-            await message.reply(f'Cannot run command! You must have at least {db.DINKDONK_RESET_PRIVILEGE_MINIMUM} dinkdonks and be in first place to run this command.', mention_author=False)
+            await message.reply(f'Cannot run command! You must have at least {db.DINKDONK_RESET_PRIVILEGE_MINIMUM} dinkdonks and be alone in first place to run this command.', mention_author=False)
         except Exception as e:
           logging.error('Exception raised in $dinkdonk reset command')
           logging.exception(e)
           traceback.print_exc()
           await message.reply('An unknown internal error has occurred.', mention_author=False)
       else:
-        await message.reply('I don\'t understand that command! Use `$dinkdonk` to summon the bell, `$dinkdonk leaderboard` to see who has the best RNG, or `$dinkdonk reset` if you are able to cause a mulligan.', mention_author=False)
+        await message.reply('I don\'t understand that command! Use `$dinkdonk` to summon the bell or `$dinkdonk leaderboard` to see who has been punished the most by the RNG.', mention_author=False)
 
     elif message.content.startswith('$mydinkdonks'):
       try:
