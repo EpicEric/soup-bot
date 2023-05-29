@@ -175,10 +175,14 @@ def run():
           channel_members = [m for m in client.get_channel(message.channel.id).members if not m.bot]
           random.seed(message.id + int(message.created_at.timestamp()))
           picked_member = random.sample(channel_members, 1)[0]
+          could_reset_dds = db.check_if_has_reset_privilege(picked_member.id, server_id)
           # Persist increased count
           dd_count = db.save_dinkdonk_for_user(picked_member.id, server_id)
-          can_reset_dds = db.check_if_has_reset_privilege(picked_member.id, server_id)
-          value_prefix = 'This user can now reset all dinkdonks in this server with `$dinkdonk reset` while alone in first place!\n' if can_reset_dds else ''
+          value_prefix = ''
+          if could_reset_dds:
+            value_prefix = 'This user can still use `$dinkdonk reset`. Just saying...\n'
+          elif db.check_if_has_reset_privilege(picked_member.id, server_id):
+            value_prefix = 'This user can now reset all dinkdonks in this server with `$dinkdonk reset` while alone in first place!\n'
           embed = {
             'color': 4321431,
             'title': '$dinkdonk',
