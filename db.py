@@ -1,6 +1,6 @@
 import datetime
 import sqlite3
-from typing import Optional
+from typing import Optional, List, Tuple
 
 DINKDONK_RESET_PRIVILEGE_MINIMUM = 50
 
@@ -29,7 +29,7 @@ def get_timezone_for_user_id(user_id: int) -> Optional[str]:
   with conn:
     cur = conn.cursor()
     res = cur.execute('SELECT tz FROM users WHERE id = ?', (str(user_id),))
-    value = res.fetchone()
+    value: Optional[Tuple[str]] = res.fetchone()
     cur.close()
     return value[0] if value else None
 
@@ -42,11 +42,21 @@ def save_dinkdonk_for_user(user_id: int, server_id: int, timestamp: Optional[dat
     timestamp = datetime.datetime.utcfromtimestamp(timestamp.timestamp())
   with conn:
     cur = conn.cursor()
-    cur.execute('INSERT INTO dinkdonk (server_id, user_id, count, last_modified) VALUES (?, ?, ?, ?) ON CONFLICT(server_id, user_id) DO UPDATE SET count = dinkdonk.count + 1, last_modified = excluded.last_modified', (str(server_id), str(user_id), 1, timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')))
+    cur.execute('INSERT INTO dinkdonk (server_id, user_id, count, lifetime_count, last_modified) VALUES (?, ?, ?, ?, ?) ON CONFLICT(server_id, user_id) DO UPDATE SET count = dinkdonk.count + 1, lifetime_count = dinkdonk.lifetime_count + 1, last_modified = excluded.last_modified', (str(server_id), str(user_id), 1, 1, timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')))
     res = cur.execute('SELECT count FROM dinkdonk WHERE server_id = ? AND user_id = ?', (str(server_id), str(user_id)))
-    value = res.fetchone()
+    value: Tuple[int] = res.fetchone()
     cur.close()
     return value[0]
+
+def get_all_dinkdonks_for_user(user_id: int, server_id: int) -> Tuple[int, int]:
+  if not conn:
+    raise ValueError('DB not initialized!')
+  with conn:
+    cur = conn.cursor()
+    res = cur.execute('SELECT count, lifetime_count FROM dinkdonk WHERE user_id = ? AND server_id = ?', (str(user_id), str(server_id)))
+    value: Optional[Tuple[int, int]] = res.fetchone()
+    cur.close()
+    return value if value else (0, 0)
 
 def get_dinkdonks_for_server(server_id: int):
   if not conn:
@@ -54,7 +64,7 @@ def get_dinkdonks_for_server(server_id: int):
   with conn:
     cur = conn.cursor()
     res = cur.execute('SELECT user_id, count FROM dinkdonk WHERE server_id = ? AND count > 0', (str(server_id),))
-    values = res.fetchall()
+    values: List[Tuple[str, int]] = res.fetchall()
     cur.close()
     return values
 
@@ -101,7 +111,7 @@ def get_dd_cache(server_id: int) -> Optional[datetime.datetime]:
   with conn:
     cur = conn.cursor()
     res = cur.execute('SELECT value FROM dinkdonk_cache WHERE server_id = ?', (str(server_id),))
-    value = res.fetchone()
+    value: Optional[Tuple[int]] = res.fetchone()
     cur.close()
     if value and value[0]:
       return datetime.datetime.fromtimestamp(value[0])

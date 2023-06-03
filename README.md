@@ -21,7 +21,7 @@ Create a SQLite database to `./discord_bot.db` (create by invoking `sqlite3` in 
 
 ```sql
 CREATE TABLE users(id VARCHAR(24) PRIMARY KEY, tz TEXT, last_modified TEXT);
-CREATE TABLE dinkdonk(server_id VARCHAR(24), user_id VARCHAR(24), count INTEGER, last_modified TEXT, PRIMARY KEY (server_id, user_id));
+CREATE TABLE dinkdonk(server_id VARCHAR(24), user_id VARCHAR(24), count INTEGER, lifetime_count INTEGER, last_modified TEXT, PRIMARY KEY (server_id, user_id));
 CREATE TABLE dinkdonk_cache(server_id VARCHAR(24) PRIMARY KEY, value INTEGER);
 .save discord_bot.db
 ```

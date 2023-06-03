@@ -182,7 +182,10 @@ def run():
           if could_reset_dds:
             value_prefix = 'This user can still use `$dinkdonk reset`. Just saying...\n'
           elif db.check_if_has_reset_privilege(picked_member.id, server_id):
-            value_prefix = 'This user can now reset all dinkdonks in this server with `$dinkdonk reset` while alone in first place!\n'
+            value_prefix = 'This user can now use `$dinkdonk reset`, and reset all dinkdonks in this server while they\'re ahead in first place!\n'
+          snarky_count_comment = ''
+          if dd_count == 69:
+            snarky_count_comment = ' (nice)'
           embed = {
             'color': 4321431,
             'title': '$dinkdonk',
@@ -197,7 +200,7 @@ def run():
             'timestamp': datetime.datetime.utcnow().isoformat(),
             'description': f'<a:DinkDonk:1102105207439110174> <@{picked_member.id}>{" (haha get rekt)" if picked_member.id == message.author.id else ""}',
             'fields': [{
-              'name': f'The bell has tolled for thee {dd_count} {"times" if dd_count > 1 else "time"}.',
+              'name': f'The bell has tolled for thee {dd_count} {"times" if dd_count > 1 else "time"}{snarky_count_comment}.',
               'inline': False,
               'value': f'{value_prefix}*(command will be available again <t:{int(next_dd_timestamp.timestamp())}:R>)*',
             }],
@@ -291,7 +294,8 @@ def run():
             db.clear_server_dinkdonks(server_id, timestamp=timestamp)
             db.save_dinkdonk_for_user(user_id, server_id, timestamp=timestamp)
           else:
-            await message.reply(f'Cannot run command! You must have at least {db.DINKDONK_RESET_PRIVILEGE_MINIMUM} dinkdonks and be alone in first place to run this command.', mention_author=False)
+            
+            await message.reply(f'Oops, can\'t do that! Resetting the count is a privilege of the almighty reigning Dinkdonk Champion, who has conquered the leaderboard with {db.DINKDONK_RESET_PRIVILEGE_MINIMUM} dinkdonks. You\'re just a humble serf without enough dinkdonks to play with the big bells. Time to hustle and earn those sweet jingles!', mention_author=False)
         except Exception as e:
           logging.error('Exception raised in $dinkdonk reset command')
           logging.exception(e)
@@ -308,7 +312,11 @@ def run():
           await message.reply('You have no dinkdonks! I\'m clearly not doing my job...', mention_author=False)
         else:
           count = dd_list[-1][0]
-          await message.reply(f'You have {count} {"dinkdonks" if count > 1 else "dinkdonk"} in total. You are in {utils.get_ordinal(len(dd_list))} place.', mention_author=False)
+          lifetime_count = db.get_all_dinkdonks_for_user(message.author.id, message.guild.id)[1]
+          if lifetime_count == count:
+            await message.reply(f'You have {count} {"dinkdonks" if count > 1 else "dinkdonk"} in total. You are in {utils.get_ordinal(len(dd_list))} place.', mention_author=False)
+          else:
+            await message.reply(f'You have {count} {"dinkdonks" if count > 1 else "dinkdonk"} right now, and {lifetime_count} when including past resets. You are currently in {utils.get_ordinal(len(dd_list))} place.', mention_author=False)
       except Exception as e:
         logging.error('Exception raised in $dinkdonk reset command')
         logging.exception(e)
