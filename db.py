@@ -2,6 +2,8 @@ import datetime
 import sqlite3
 from typing import Optional, List, Tuple
 
+import utils
+
 DINKDONK_RESET_PRIVILEGE_MINIMUM = 50
 
 conn = None
@@ -122,5 +124,5 @@ def set_dd_cache(server_id: int, value: Optional[datetime.datetime]):
     raise ValueError('DB not initialized!')
   with conn:
     cur = conn.cursor()
-    cur.execute('INSERT INTO dinkdonk_cache (server_id, value) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET value = excluded.value', (str(server_id), int(value.timestamp()) if value else None))
+    cur.execute('INSERT INTO dinkdonk_cache (server_id, value) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET value = excluded.value', (str(server_id), utils.datetime_to_timestamp(value) if value else None))
     cur.close()

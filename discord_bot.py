@@ -60,7 +60,7 @@ def run():
         if tz:
           time_now = datetime.datetime.now(dateutil.tz.tzutc())
           local_time = datetime.datetime.fromtimestamp(time_now.timestamp(), tz=tz).strftime('%Y-%m-%d at %H:%M (%Z)')
-          await message.reply(f'Your timezone has been set to `{content}`. If this is correct, then your local time, **{local_time}**, should be the same as <t:{int(time_now.timestamp())}>.', mention_author=False)
+          await message.reply(f'Your timezone has been set to `{content}`. If this is correct, then your local time, **{local_time}**, should be the same as <t:{utils.datetime_to_timestamp(time_now)}>.', mention_author=False)
         else:
           await message.reply(f'Your timezone has been removed.', mention_author=False)
       except Exception as e:
@@ -167,13 +167,13 @@ def run():
           # Ensure that the command hasn't been used recently
           next_dinkdonk = db.get_dd_cache(server_id)
           if next_dinkdonk is not None and next_dinkdonk.timestamp() > message.created_at.timestamp():
-            await message.reply(f'$dinkdonk is on cooldown! You\'ll get to use it again <t:{int(next_dinkdonk.timestamp())}:R>.', mention_author=False)
+            await message.reply(f'$dinkdonk is on cooldown! You\'ll get to use it again <t:{utils.datetime_to_timestamp(next_dinkdonk)}:R>.', mention_author=False)
             return
           next_dd_timestamp = message.created_at + DINKDONK_CACHE_LIMIT
           db.set_dd_cache(server_id, next_dd_timestamp)
           # Pick a random non-bot channel member
           channel_members = [m for m in client.get_channel(message.channel.id).members if not m.bot]
-          random.seed(message.id + int(message.created_at.timestamp()))
+          random.seed(message.id + utils.datetime_to_timestamp(message.created_at))
           picked_member = random.sample(channel_members, 1)[0]
           could_reset_dds = db.check_if_has_reset_privilege(picked_member.id, server_id)
           # Persist increased count
@@ -202,7 +202,7 @@ def run():
             'fields': [{
               'name': f'The bell has tolled for thee {dd_count} {"times" if dd_count > 1 else "time"}{snarky_count_comment}.',
               'inline': False,
-              'value': f'{value_prefix}*(command will be available again <t:{int(next_dd_timestamp.timestamp())}:R>)*',
+              'value': f'{value_prefix}*(command will be available again <t:{utils.datetime_to_timestamp(next_dd_timestamp)}:R>)*',
             }],
           }
           await message.reply(None, embed=discord.Embed.from_dict(embed), mention_author=False)

@@ -1,4 +1,8 @@
+import datetime
 from typing import List, Tuple, Union, Optional
+
+def datetime_to_timestamp(dt: datetime.datetime):
+  return int(dt.timestamp())
 
 def rank_dinkdonks(dd_list: List[Tuple[str, int]], cut_off_at_length: Optional[int]=None, cut_off_at_user_id: Union[str, int, None]=None) -> List[Tuple[int, List[str]]]:
   if len(dd_list) == 0:

@@ -5,6 +5,7 @@ import logging
 import traceback
 
 import env
+import utils
 
 wit = None
 
@@ -14,9 +15,9 @@ class Wit:
 
   async def message(self, msg: str, reference_time: datetime.datetime):
     params = {
-      'v': '20200513',
+      'v': '20230215',
       'q': msg[:280],
-      'context': json.dumps({'reference_time': reference_time.isoformat()}),
+      'context': json.dumps({'reference_time': reference_time.replace(microsecond=0).isoformat()}), 
     }
     headers = {
       'Authorization': f'Bearer {self.token}',
@@ -44,12 +45,6 @@ class ProcessTimeMessageException(ValueError):
 def init():
   global wit
   wit = Wit(env.WIT_TOKEN)
-
-def _datetime_to_timestamp(dt):
-  return int(dt.timestamp())
-
-def _string_to_datetime(string):
-  return datetime.datetime.fromisoformat(string)
 
 async def process_time_message(message, local_datetime_with_tz: datetime.datetime):
   if not wit:
@@ -115,12 +110,12 @@ async def process_time_message(message, local_datetime_with_tz: datetime.datetim
         timestamp_suffix = ':D'
         for value in ent_values:
           if is_interval:
-            date_value_from = _string_to_datetime(value['from']['value']).replace(hour=hour, minute=minute, second=second, tzinfo=tz)
-            date_value_to = _string_to_datetime(value['to']['value']).replace(hour=hour, minute=minute, second=second, tzinfo=tz)
-            values.append(f'<t:{_datetime_to_timestamp(date_value_from)}{timestamp_suffix}> to <t:{_datetime_to_timestamp(date_value_to - exclusive_timedelta)}{timestamp_suffix}>')
+            date_value_from = datetime.datetime.fromisoformat(value['from']['value']).replace(hour=hour, minute=minute, second=second)
+            date_value_to = datetime.datetime.fromisoformat(value['to']['value']).replace(hour=hour, minute=minute, second=second)
+            values.append(f'<t:{utils.datetime_to_timestamp(date_value_from)}{timestamp_suffix}> to <t:{utils.datetime_to_timestamp(date_value_to - exclusive_timedelta)}{timestamp_suffix}>')
           else:
-            date_value = _string_to_datetime(value['value']).replace(hour=hour, minute=minute, second=second, tzinfo=tz)
-            values.append(f'<t:{_datetime_to_timestamp(date_value)}{timestamp_suffix}>')
+            date_value = datetime.datetime.fromisoformat(value['value']).replace(hour=hour, minute=minute, second=second)
+            values.append(f'<t:{utils.datetime_to_timestamp(date_value)}{timestamp_suffix}>')
 
       # If it's a time
       else:
@@ -151,9 +146,9 @@ async def process_time_message(message, local_datetime_with_tz: datetime.datetim
               values_to_save.append(datetime_value)
         for value in values_to_save:
           if is_interval:
-            values.append(f'<t:{_datetime_to_timestamp(value[0].replace(tzinfo=tz))}{timestamp_suffix}> to <t:{_datetime_to_timestamp(value[1].replace(tzinfo=tz) - exclusive_timedelta)}{timestamp_suffix}>')
+            values.append(f'<t:{utils.datetime_to_timestamp(value[0])}{timestamp_suffix}> to <t:{utils.datetime_to_timestamp(value[1] - exclusive_timedelta)}{timestamp_suffix}>')
           else:
-            values.append(f'<t:{_datetime_to_timestamp(value.replace(tzinfo=tz))}{timestamp_suffix}>')
+            values.append(f'<t:{utils.datetime_to_timestamp(value)}{timestamp_suffix}>')
 
       if len(values) == 0:
         logging.error('Couldn\'t find any values for body "%s"!', time_body)
