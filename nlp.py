@@ -1,12 +1,13 @@
 import aiohttp
 import datetime
 import json
-import logging
+import logging as pyLogging
 import traceback
 
 import env
 import utils
 
+logging = pyLogging.getLogger('soupbot.nlp')
 wit = None
 
 class Wit:

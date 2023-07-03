@@ -2,7 +2,7 @@ import asyncio
 import datetime
 import dateutil.tz
 import discord
-import logging
+import logging as pyLogging
 import random
 import signal
 import traceback
@@ -22,8 +22,10 @@ def truncate_text(text, truncate_at):
 
 def run():
   discord.utils.setup_logging()
+  logging = pyLogging.getLogger('soupbot')
 
   intents = discord.Intents.default()
+  intents.guilds = True
   intents.message_content = True
   intents.members = True
 
@@ -31,7 +33,17 @@ def run():
 
   @client.event
   async def on_ready():
-    logging.info(f'{client.user} is active')
+    logging.info(f'{client.user} is active and listening to {len(client.guilds)} server(s)')
+    for guild in client.guilds:
+      logging.info(f' - {guild.name} (id: {guild.id})')
+
+  @client.event
+  async def on_guild_join(guild: discord.Guild):
+    logging.info(f'Joined guild "{guild.name}" (id: {guild.id})')
+
+  @client.event
+  async def on_guild_remove(guild: discord.Guild):
+    logging.info(f'Left guild "{guild.name}" (id: {guild.id})')
 
   @client.event
   async def on_message(message: discord.Message):
