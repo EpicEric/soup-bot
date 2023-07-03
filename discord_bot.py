@@ -290,11 +290,17 @@ def run():
               'timestamp': datetime.datetime.utcnow().isoformat(),
               'fields': fields,
             }
-            await message.reply(f'$dinkdonks reset! <@{user_id}> has been awarded one dinkdonk as well. <a:DinkDonk:1102105207439110174>\n\nHere are the final results prior to reset:', embed=discord.Embed.from_dict(embed))
+            scoreboard_message = await message.reply(f'$dinkdonks reset! <@{user_id}> has been awarded one dinkdonk as well. <a:DinkDonk:1102105207439110174>\n\nHere are the final results prior to reset:', embed=discord.Embed.from_dict(embed))
             db.clear_server_dinkdonks(server_id, timestamp=timestamp)
             db.save_dinkdonk_for_user(user_id, server_id, timestamp=timestamp)
+            this_member = [m for m in client.get_channel(scoreboard_message.channel.id).members if m.id == client.user.id][0]
+            if scoreboard_message.channel.permissions_for(this_member).manage_messages:
+              try:
+                await scoreboard_message.pin()
+              except Exception as e:
+                logging.warning('Failed to pin leaderboard message to %s', scoreboard_message.channel.name)
+                logging.exception(e)
           else:
-            
             await message.reply(f'Oops, can\'t do that! Resetting the count is a privilege of the almighty reigning Dinkdonk Champion, who has conquered the leaderboard with {db.DINKDONK_RESET_PRIVILEGE_MINIMUM} dinkdonks. You\'re just a humble serf without enough dinkdonks to play with the big bells. Time to hustle and earn those sweet jingles!', mention_author=False)
         except Exception as e:
           logging.error('Exception raised in $dinkdonk reset command')
