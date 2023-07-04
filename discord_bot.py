@@ -63,6 +63,9 @@ def run():
           else:
             await message.reply(f'You haven\'t selected a timezone yet. You can choose one with **$settimezone Your/Timezone**\n\nFor a list of valid timezones, check out: https://nodatime.org/TimeZones', mention_author=False, suppress_embeds=True)
             return
+        if content == 'help':
+          await message.reply(f'You can use this command to select a timezone.\n- **$settimezone Your/Timezone** to choose a timezone; a list of valid timezones can be found here: https://nodatime.org/TimeZones\n- **$settimezone** displays your current timezone (if set)\n- **$settimezone clear** deletes your current timezone', mention_author=False, suppress_embeds=True)
+          return
         if content != 'clear':
           tz = dateutil.tz.gettz(content)
           if not tz:
@@ -92,6 +95,10 @@ def run():
         content = message.content[5:].strip()
         message_author = message.author
         timestamp = message.created_at
+
+        if content == 'help':
+          await message.reply(f'You can use this command to infer the local time from someone\'s message, if they\'ve selected a timezone with $settimezone.\n\nSimply add **$time** to the start of your message, or reply to an existing message with **$time**, to have the mentioned time(s) translated to everyone\'s local time.', mention_author=False)
+          return
 
         # If it's a reply to another message, use that instead
         if message.reference and isinstance(message.reference.resolved, discord.Message):
@@ -173,6 +180,11 @@ def run():
     # DinkDonks someone without pinging them
     elif message.content.startswith('$dinkdonk'):
       content = message.content[9:].strip()
+
+      if content == 'help':
+        await message.reply(f'See for whom the dinkdonk tolls.\n- **$dinkdonk** brings the bell\'s wrath upon this channel.\n- **$dinkdonk leaderboard** shows the people that donk the most dinks.\n- **$dinkdonk reset** is a special command, only available when someone is way ahead of the others...\n- **$mydinkdonks** displays your personal stats.', mention_author=False)
+        return
+
       if not content:
         try:
           server_id = message.guild.id
@@ -338,7 +350,7 @@ def run():
           else:
             await message.reply(f'You have {count} {"dinkdonks" if count > 1 else "dinkdonk"} right now, and {lifetime_count} when including past resets. You are currently in {utils.get_ordinal(dd_list_place)} place.', mention_author=False)
       except Exception as e:
-        logging.error('Exception raised in $dinkdonk reset command')
+        logging.error('Exception raised in $mydinkdonks command')
         logging.exception(e)
         traceback.print_exc()
         await message.reply('An unknown internal error has occurred.', mention_author=False)
