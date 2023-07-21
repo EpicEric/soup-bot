@@ -12,6 +12,8 @@ A silly Discord bot that runs on soup.
     - Read Messages/View Channels
     - Send Messages
     - Embed Links
+    - Use External Emojis
+    - Use External Stickers
     - Manage Messages (optional)
 - A Wit.AI application that parses `wit/datetime:datetime` entities (I've used the `wit/get_time` intent for this).
 - sqlite3

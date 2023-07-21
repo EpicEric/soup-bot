@@ -182,7 +182,7 @@ def run():
       content = message.content[9:].strip()
 
       if content == 'help':
-        await message.reply(f'See for whom the dinkdonk tolls.\n- **$dinkdonk** brings the bell\'s wrath upon this channel.\n- **$dinkdonk leaderboard** shows the people that donk the most dinks.\n- **$dinkdonk reset** is a special command, only available when someone is way ahead of the others...\n- **$mydinkdonks** displays your personal stats.', mention_author=False)
+        await message.reply(f'Ask for whom the dinkdonk tolls.\n- **$dinkdonk** brings the bell\'s wrath upon this channel.\n- **$dinkdonk leaderboard** shows the people that donk the most dinks.\n- **$dinkdonk reset** is a special command, only available when someone is way ahead of the others...\n- **$mydinkdonks** displays your personal stats.', mention_author=False)
         return
 
       if not content:
