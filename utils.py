@@ -13,6 +13,8 @@ def rank_dinkdonks(dd_list: List[Tuple[str, int]], cut_off_at_length: Optional[i
   current_users = [dd_list[0][0]]
   current_score = dd_list[0][1]
   ranked_dd_list = [(current_score, current_users)]
+  if cut_off_at_user_id and current_users[0] == cut_off_at_user_id:
+    return ranked_dd_list
   for dd in dd_list[1:]:
     if dd[1] < current_score:
       if cut_off_at_length and len(ranked_dd_list) >= cut_off_at_length:
