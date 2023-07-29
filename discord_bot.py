@@ -58,7 +58,9 @@ def run():
         if not content:
           tz = db.get_timezone_for_user_id(message.author.id)
           if tz:
-            await message.reply(f'Your timezone is currently set to `{tz}`. You can change it with **$settimezone Your/Timezone**, or remove it with **$settimezone clear**.', mention_author=False)
+            time_now = datetime.datetime.now(dateutil.tz.tzutc())
+            local_time = datetime.datetime.fromtimestamp(time_now.timestamp(), tz=tz).strftime('%Y-%m-%d at %H:%M (%Z)')
+            await message.reply(f'Your timezone is currently set to `{tz}`. If this is correct, then your local time should be **{local_time}**.\n\nYou can change it with **$settimezone Your/Timezone**, or remove it with **$settimezone clear**.', mention_author=False)
             return
           else:
             await message.reply(f'You haven\'t selected a timezone yet. You can choose one with **$settimezone Your/Timezone**\n\nFor a list of valid timezones, check out: https://nodatime.org/TimeZones', mention_author=False, suppress_embeds=True)
@@ -88,6 +90,9 @@ def run():
     elif message.content.startswith('$time'):
       if message.content.strip().lower() == '$time is soup':
         await message.reply('Yeah')
+        return
+      elif message.content.startswith('$timezone'):
+        await message.reply('Did you mean to use $settimezone instead?', mention_author=False)
         return
       try:
         reply_to = message
@@ -194,9 +199,15 @@ def run():
             await message.reply(f'$dinkdonk is on cooldown! You\'ll get to use it again <t:{utils.datetime_to_timestamp(next_dinkdonk)}:R>.', mention_author=False)
             return
           next_dd_timestamp = message.created_at + DINKDONK_CACHE_LIMIT
+          channel_members = [m for m in client.get_channel(message.channel.id).members if not m.bot]
+          if len(channel_members) < 1:
+            await message.reply(f'$dinkdonk is not available here! Use the command in a valid channel.', mention_author=False)
+            return
+          elif len(channel_members) == 1:
+            await message.reply(f'$dinkdonk is only available when there are at least two users in the channel.', mention_author=False)
+            return
           db.set_dd_cache(server_id, next_dd_timestamp)
           # Pick a random non-bot channel member
-          channel_members = [m for m in client.get_channel(message.channel.id).members if not m.bot]
           random.seed(message.id + utils.datetime_to_timestamp(message.created_at))
           picked_member = random.sample(channel_members, 1)[0]
           could_reset_dds = db.check_if_has_reset_privilege(picked_member.id, server_id)

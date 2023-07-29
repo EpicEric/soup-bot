@@ -19,28 +19,24 @@ def rank_dinkdonks(dd_list: List[Tuple[str, int]], cut_off_at_length: Optional[i
     if dd[1] < current_score:
       if cut_off_at_length and len(ranked_dd_list) >= cut_off_at_length:
         break
-      current_users = []
+      current_users = [dd[0]]
       current_score = dd[1]
       ranked_dd_list.append((current_score, current_users))
-    current_users.append(dd[0])
+    else:
+      current_users.append(dd[0])
     if cut_off_at_user_id and dd[0] == cut_off_at_user_id:
       break
   return ranked_dd_list
 
 def get_ordinal(number: int):
-  if type(number) is not int:
-    try:
-      number = int(number)
-    except:
-      raise ValueError('This number is not an Int!')
-  lastdigit = int(str(number)[len(str(number))-1])
-  last2 = int(str(number)[len(str(number))-2:])
-  if last2 > 10 and last2 < 13:
-      return f'{number}th'
+  lastdigit = abs(number) % 10
+  last2 = abs(number) % 100
+  if 10 < last2 <= 13:
+    return f'{number}th'
   if lastdigit == 1:
-      return f'{number}st'
+    return f'{number}st'
   if lastdigit == 2:
-      return f'{number}nd'
+    return f'{number}nd'
   if lastdigit == 3:
-      return f'{number}rd'
+    return f'{number}rd'
   return f'{number}th'
