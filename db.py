@@ -35,7 +35,7 @@ def get_timezone_for_user_id(user_id: int) -> Optional[str]:
     cur.close()
     return value[0] if value else None
 
-def save_dinkdonk_for_user(user_id: int, server_id: int, timestamp: Optional[datetime.datetime] = None):
+def save_dinkdonk_for_user(user_id: int, server_id: int, from_user_id: Optional[int] = None, timestamp: Optional[datetime.datetime] = None):
   if not conn:
     raise ValueError('DB not initialized!')
   if not timestamp:
@@ -45,6 +45,8 @@ def save_dinkdonk_for_user(user_id: int, server_id: int, timestamp: Optional[dat
   with conn:
     cur = conn.cursor()
     cur.execute('INSERT INTO dinkdonk (server_id, user_id, count, lifetime_count, last_modified) VALUES (?, ?, ?, ?, ?) ON CONFLICT(server_id, user_id) DO UPDATE SET count = dinkdonk.count + 1, lifetime_count = dinkdonk.lifetime_count + 1, last_modified = excluded.last_modified', (str(server_id), str(user_id), 1, 1, timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')))
+    if from_user_id:
+      cur.execute('INSERT INTO cross_dinkdonks (server_id, to_user_id, from_user_id, count, last_modified) VALUES (?, ?, ?, ?, ?) ON CONFLICT(server_id, to_user_id, from_user_id) DO UPDATE SET count = cross_dinkdonks.count + 1, last_modified = excluded.last_modified', (str(server_id), str(user_id), str(from_user_id), 1, timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')))
     res = cur.execute('SELECT count FROM dinkdonk WHERE server_id = ? AND user_id = ?', (str(server_id), str(user_id)))
     value: Tuple[int] = res.fetchone()
     cur.close()
@@ -59,6 +61,16 @@ def get_all_dinkdonks_for_user(user_id: int, server_id: int) -> Tuple[int, int]:
     value: Optional[Tuple[int, int]] = res.fetchone()
     cur.close()
     return value if value else (0, 0)
+
+def get_cross_dinkdonks_at_user(user_id: int, server_id: int):
+  if not conn:
+    raise ValueError('DB not initialized!')
+  with conn:
+    cur = conn.cursor()
+    res = cur.execute('SELECT from_user_id, count FROM cross_dinkdonks WHERE to_user_id = ? AND server_id = ?', (str(user_id), str(server_id)))
+    values: List[Tuple[str, int]] = res.fetchall()
+    cur.close()
+    return values
 
 def get_dinkdonks_for_server(server_id: int):
   if not conn:
@@ -105,6 +117,7 @@ def clear_server_dinkdonks(server_id: int, timestamp: Optional[datetime.datetime
   with conn:
     cur = conn.cursor()
     cur.execute('UPDATE dinkdonk SET count = 0, last_modified = ? WHERE server_id = ?', (timestamp.strftime('%Y-%m-%dT%H:%M:%SZ'), str(server_id)))
+    cur.execute('UPDATE cross_dinkdonks SET count = 0, last_modified = ? WHERE server_id = ?', (timestamp.strftime('%Y-%m-%dT%H:%M:%SZ'), str(server_id)))
     cur.close()
 
 def get_dd_cache(server_id: int) -> Optional[datetime.datetime]:

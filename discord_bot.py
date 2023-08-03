@@ -212,7 +212,7 @@ def run():
           picked_member = random.sample(channel_members, 1)[0]
           could_reset_dds = db.check_if_has_reset_privilege(picked_member.id, server_id)
           # Persist increased count
-          dd_count = db.save_dinkdonk_for_user(picked_member.id, server_id)
+          dd_count = db.save_dinkdonk_for_user(picked_member.id, server_id, from_user_id=message.author.id)
           value_prefix = ''
           if could_reset_dds:
             value_prefix = 'This user can still use `$dinkdonk reset`. Just saying...\n'
@@ -293,6 +293,7 @@ def run():
           if can_reset_dds:
             timestamp = message.created_at
             db.set_dd_cache(server_id, None)
+            all_dinkdonks_at_winner = sorted(db.get_cross_dinkdonks_at_user(user_id, server_id), lambda x: x[1], reverse=True)
             dd_list = db.get_dinkdonks_for_server(server_id)
             ranked_dd_list = utils.rank_dinkdonks(dd_list)
             # Render winners' placements
@@ -325,7 +326,10 @@ def run():
               'timestamp': datetime.datetime.utcnow().isoformat(),
               'fields': fields,
             }
-            scoreboard_message = await message.reply(f'$dinkdonks reset! <@{user_id}> has been awarded one dinkdonk as well. <a:DinkDonk:1102105207439110174>\n\nHere are the final results prior to reset:', embed=discord.Embed.from_dict(embed))
+            if len(all_dinkdonks_at_winner) > 0:
+              scoreboard_message = await message.reply(f'$dinkdonks reset! <@{user_id}> has been awarded one dinkdonk as well. <a:DinkDonk:1102105207439110174> (you can blame <@{all_dinkdonks_at_winner[0][0]}> for {all_dinkdonks_at_winner[0][1]} of those dinkdonks...)\n\nHere are the final results prior to reset:', embed=discord.Embed.from_dict(embed))
+            else:
+              scoreboard_message = await message.reply(f'$dinkdonks reset! <@{user_id}> has been awarded one dinkdonk as well. <a:DinkDonk:1102105207439110174>\n\nHere are the final results prior to reset:', embed=discord.Embed.from_dict(embed))
             db.clear_server_dinkdonks(server_id, timestamp=timestamp)
             db.save_dinkdonk_for_user(user_id, server_id, timestamp=timestamp)
             this_member = [m for m in client.get_channel(scoreboard_message.channel.id).members if m.id == client.user.id][0]
