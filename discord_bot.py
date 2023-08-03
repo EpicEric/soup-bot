@@ -221,6 +221,7 @@ def run():
           snarky_count_comment = ''
           if dd_count == 69:
             snarky_count_comment = ' (nice)'
+          should_alert = db.get_dinkdonk_should_alert(picked_member.id, server_id)
           embed = {
             'color': 4321431,
             'title': '$dinkdonk',
@@ -240,7 +241,7 @@ def run():
               'value': f'{value_prefix}*(command will be available again <t:{utils.datetime_to_timestamp(next_dd_timestamp)}:R>)*',
             }],
           }
-          await message.reply(None, embed=discord.Embed.from_dict(embed), mention_author=False)
+          await message.reply(f'<a:DinkDonk:1102105207439110174> <@{picked_member.id}>' if should_alert else None, embed=discord.Embed.from_dict(embed), mention_author=False)
         except Exception as e:
           logging.error('Exception raised in $dinkdonk command')
           logging.exception(e)
@@ -285,6 +286,19 @@ def run():
           logging.exception(e)
           traceback.print_exc()
           await message.reply('An unknown internal error has occurred.', mention_author=False)
+      elif content == 'alert':
+        try:
+          db.toggle_dinkdonk_alerts(message.author.id, message.guild.id)
+          should_alert = db.get_dinkdonk_should_alert(message.author.id, message.guild.id)
+          if should_alert:
+            await message.reply('You will be alerted when you receive a $dinkdonk in this server.', mention_author=True)
+          else:
+            await message.reply('You will no longer be alerted when you receive a $dinkdonk in this server.', mention_author=False)
+        except Exception as e:
+          logging.error('Exception raised in $dinkdonk alert command')
+          logging.exception(e)
+          traceback.print_exc()
+          await message.reply('An unknown internal error has occurred.', mention_author=False)
       elif content == 'reset':
         try:
           user_id = message.author.id
@@ -293,7 +307,7 @@ def run():
           if can_reset_dds:
             timestamp = message.created_at
             db.set_dd_cache(server_id, None)
-            all_dinkdonks_at_winner = sorted(db.get_cross_dinkdonks_at_user(user_id, server_id), lambda x: x[1], reverse=True)
+            all_dinkdonks_at_winner = db.get_cross_dinkdonks_at_user(user_id, server_id)
             dd_list = db.get_dinkdonks_for_server(server_id)
             ranked_dd_list = utils.rank_dinkdonks(dd_list)
             # Render winners' placements
@@ -327,7 +341,8 @@ def run():
               'fields': fields,
             }
             if len(all_dinkdonks_at_winner) > 0:
-              scoreboard_message = await message.reply(f'$dinkdonks reset! <@{user_id}> has been awarded one dinkdonk as well. <a:DinkDonk:1102105207439110174> (you can blame <@{all_dinkdonks_at_winner[0][0]}> for {all_dinkdonks_at_winner[0][1]} of those dinkdonks...)\n\nHere are the final results prior to reset:', embed=discord.Embed.from_dict(embed))
+              max_dinkdonks_at_winner = max(all_dinkdonks_at_winner, key=lambda x: x[1])
+              scoreboard_message = await message.reply(f'$dinkdonks reset! <@{user_id}> has been awarded one dinkdonk as well. <a:DinkDonk:1102105207439110174> (you can blame <@{max_dinkdonks_at_winner[0]}> for {max_dinkdonks_at_winner[1]} of those dinkdonks...)\n\nHere are the final results prior to reset:', embed=discord.Embed.from_dict(embed))
             else:
               scoreboard_message = await message.reply(f'$dinkdonks reset! <@{user_id}> has been awarded one dinkdonk as well. <a:DinkDonk:1102105207439110174>\n\nHere are the final results prior to reset:', embed=discord.Embed.from_dict(embed))
             db.clear_server_dinkdonks(server_id, timestamp=timestamp)
