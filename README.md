@@ -42,4 +42,5 @@ services:
       SOUPBOT_WIT_TOKEN: YOUR_WIT_AI_TOKEN
     volumes:
       - ./discord_bot.db:/usr/src/app/discord_bot.db
+    restart: always
 ```
