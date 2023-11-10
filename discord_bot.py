@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import dateutil.rrule
 import dateutil.tz
 import discord
 import logging as pyLogging
@@ -13,6 +14,9 @@ import nlp
 import utils
 
 DINKDONK_CACHE_LIMIT = datetime.timedelta(minutes=30)
+
+EMOTE_DINKDONK = '<a:DinkDonk:1102105207439110174>'
+EMOTE_GOOMBAPING = '<:goombaping:1102105208760320000>'
 
 
 def truncate_text(text, truncate_at):
@@ -28,6 +32,7 @@ def run():
   intents.guilds = True
   intents.message_content = True
   intents.members = True
+  intents.guild_messages = True
 
   client = discord.Client(intents=intents)
 
@@ -46,12 +51,31 @@ def run():
     logging.info(f'Left guild "{guild.name}" (id: {guild.id})')
 
   @client.event
+  async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
+    if payload.user_id == client.user.id:
+      return
+    if str(payload.emoji) == EMOTE_GOOMBAPING:
+      logging.info(f'User "{payload.user_id}" reacted to message "{payload.message_id}" in channel "{payload.channel_id}" with goombaping')
+
+  @client.event
+  async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
+    if payload.user_id == client.user.id:
+      return
+    if str(payload.emoji) == EMOTE_GOOMBAPING:
+      logging.info(f'User "{payload.user_id}" has removed the goombaping from message "{payload.message_id}" in channel "{payload.channel_id}"')
+
+  @client.event
   async def on_message(message: discord.Message):
     if message.author == client.user:
       return
 
+    command = None
+    split_message = message.content.split(maxsplit=1)
+    if len(split_message) > 0 and split_message[0][0] == '$':
+      command = split_message[0]
+
     # Identify local timezone and then save it
-    if message.content.startswith('$settimezone'):
+    if command == '$settimezone':
       try:
         content = message.content[12:].strip()
         tz = None
@@ -87,8 +111,8 @@ def run():
         await message.reply('An unknown internal error has occurred.', mention_author=False)
 
     # Smartly translate local time to Discord timestamp
-    elif message.content.startswith('$time'):
-      if message.content.strip().lower() == '$time is soup':
+    elif command == '$time':
+      if message.content.strip().lower().split() == ['$time', 'is', 'soup']:
         await message.reply('Yeah')
         return
       elif message.content.startswith('$timezone'):
@@ -183,7 +207,7 @@ def run():
         await message.reply('An unknown internal error has occurred.', mention_author=False)
 
     # DinkDonks someone without pinging them
-    elif message.content.startswith('$dinkdonk'):
+    elif command == '$dinkdonk':
       content = message.content[9:].strip()
 
       if content == 'help':
@@ -234,14 +258,14 @@ def run():
               'icon_url': client.user.avatar.url,
             },
             'timestamp': datetime.datetime.utcnow().isoformat(),
-            'description': f'<a:DinkDonk:1102105207439110174> <@{picked_member.id}>{" (haha get rekt)" if picked_member.id == message.author.id else ""}',
+            'description': f'{EMOTE_DINKDONK} <@{picked_member.id}>{" (haha get rekt)" if picked_member.id == message.author.id else ""}',
             'fields': [{
               'name': f'The bell has tolled for thee {dd_count} {"times" if dd_count > 1 else "time"}{snarky_count_comment}.',
               'inline': False,
               'value': f'{value_prefix}*(command will be available again <t:{utils.datetime_to_timestamp(next_dd_timestamp)}:R>)*',
             }],
           }
-          await message.reply(f'<a:DinkDonk:1102105207439110174> <@{picked_member.id}>' if should_alert else None, embed=discord.Embed.from_dict(embed), mention_author=False)
+          await message.reply(f'{EMOTE_DINKDONK} <@{picked_member.id}>' if should_alert else None, embed=discord.Embed.from_dict(embed), mention_author=False)
         except Exception as e:
           logging.error('Exception raised in $dinkdonk command')
           logging.exception(e)
@@ -269,7 +293,7 @@ def run():
               'value': value,
             })
           for (i, field) in enumerate(fields):
-            field['name'] += " <a:DinkDonk:1102105207439110174>" * (len(fields) - i)
+            field['name'] += f' {EMOTE_DINKDONK}' * (len(fields) - i)
           embed = {
             'color': 4321431,
             'title': '$dinkdonk leaderboard',
@@ -342,9 +366,9 @@ def run():
             }
             if len(all_dinkdonks_at_winner) > 0:
               max_dinkdonks_at_winner = max(all_dinkdonks_at_winner, key=lambda x: x[1])
-              scoreboard_message = await message.reply(f'$dinkdonks reset! <@{user_id}> has been awarded one dinkdonk as well. <a:DinkDonk:1102105207439110174> (you can blame <@{max_dinkdonks_at_winner[0]}> for {max_dinkdonks_at_winner[1]} of those dinkdonks...)\n\nHere are the final results prior to reset:', embed=discord.Embed.from_dict(embed))
+              scoreboard_message = await message.reply(f'$dinkdonks reset! <@{user_id}> has been awarded one dinkdonk as well. {EMOTE_DINKDONK} (you can blame <@{max_dinkdonks_at_winner[0]}> for {max_dinkdonks_at_winner[1]} of those dinkdonks...)\n\nHere are the final results prior to reset:', embed=discord.Embed.from_dict(embed))
             else:
-              scoreboard_message = await message.reply(f'$dinkdonks reset! <@{user_id}> has been awarded one dinkdonk as well. <a:DinkDonk:1102105207439110174>\n\nHere are the final results prior to reset:', embed=discord.Embed.from_dict(embed))
+              scoreboard_message = await message.reply(f'$dinkdonks reset! <@{user_id}> has been awarded one dinkdonk as well. {EMOTE_DINKDONK}\n\nHere are the final results prior to reset:', embed=discord.Embed.from_dict(embed))
             db.clear_server_dinkdonks(server_id, timestamp=timestamp)
             db.save_dinkdonk_for_user(user_id, server_id, timestamp=timestamp)
             this_member = [m for m in client.get_channel(scoreboard_message.channel.id).members if m.id == client.user.id][0]
@@ -364,7 +388,7 @@ def run():
       else:
         await message.reply('I don\'t understand that command! Use `$dinkdonk` to summon the bell or `$dinkdonk leaderboard` to see who has been punished the most by the RNG.', mention_author=False)
 
-    elif message.content.startswith('$mydinkdonks'):
+    elif command == '$mydinkdonks':
       try:
         this_user_id = str(message.author.id)
         (count, lifetime_count) = db.get_all_dinkdonks_for_user(message.author.id, message.guild.id)
@@ -385,9 +409,37 @@ def run():
         traceback.print_exc()
         await message.reply('An unknown internal error has occurred.', mention_author=False)
 
+    # Create and manage repeating scheduled events
+    elif command == '$schedule':
+      return  # TODO
+      split_message = message.content.split(maxsplit=2)
+      subcommand = split_message[1] if len(split_message) > 1 else None
+      if subcommand == 'help':
+        await message.reply(f'(wip) Create and manage repeating scheduled events.\n- **$schedule create** creates a new scheduled event..\n- **$schedule edit** changes a scheduled event.\n- **$schedule remove** removes a scheduled event.', mention_author=False)
+        return
+      elif subcommand == 'create':
+        # rrule = dateutil.rrule(dtstart=message.created_at, freq=dateutil.rrule.WEEKLY)
+        # next_event = rrule.after(datetime.datetime.now(datetime.timezone.utc))
+        reply = await message.reply('blah')
+        await reply.add_reaction(EMOTE_GOOMBAPING)
+        this_member = [m for m in client.get_channel(reply.channel.id).members if m.id == client.user.id][0]
+        if reply.channel.permissions_for(this_member).manage_messages:
+          try:
+            await reply.pin()
+          except Exception as e:
+            logging.warning('Failed to pin schedule message to %s', reply.channel.name)
+            logging.exception(e)
+        pass
+      elif subcommand == 'edit':
+        await message.reply('`$schedule edit` is not implemented', mention_author=False)
+      elif subcommand == 'remove':
+        await message.reply('`$schedule remove` is not implemented', mention_author=False)
+      else:
+        await message.reply('I don\'t understand that command! Use `$schedule help` for more information.', mention_author=False)
+
     # :goombaping:
     elif any(mention.id == client.user.id for mention in message.mentions):
-      await message.reply('<:goombaping:1102105208760320000>')
+      await message.reply(EMOTE_GOOMBAPING)
 
   def on_exit(signum, frame):
     loop = asyncio.get_event_loop()

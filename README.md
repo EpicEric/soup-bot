@@ -14,6 +14,7 @@ A silly Discord bot that runs on soup.
     - Embed Links
     - Use External Emojis
     - Use External Stickers
+    - Add Reactions
     - Manage Messages (optional)
 - A Wit.AI application that parses `wit/datetime:datetime` entities (I've used the `wit/get_time` intent for this).
 - sqlite3
@@ -27,6 +28,8 @@ CREATE TABLE users(id VARCHAR(24) PRIMARY KEY, tz TEXT, last_modified TEXT);
 CREATE TABLE dinkdonk(server_id VARCHAR(24), user_id VARCHAR(24), count INTEGER, lifetime_count INTEGER, should_alert INTEGER DEFAULT FALSE, last_modified TEXT, PRIMARY KEY (server_id, user_id));
 CREATE TABLE cross_dinkdonks(server_id VARCHAR(24), to_user_id VARCHAR(24), from_user_id VARCHAR(24), count INTEGER, last_modified TEXT, PRIMARY KEY (server_id, to_user_id, from_user_id));
 CREATE TABLE dinkdonk_cache(server_id VARCHAR(24) PRIMARY KEY, value INTEGER);
+-- CREATE TABLE schedule(channel_id VARCHAR(24), message_id VARCHAR(24), description TEXT, next_rrule_timestamp INTEGER, tz TEXT, last_modified TEXT, PRIMARY KEY (channel_id, message_id));
+-- CREATE TABLE schedule_users(channel_id VARCHAR(24), message_id VARCHAR(24), user_id VARCHAR(24), enabled INTEGER DEFAULT FALSE, last_modified TEXT, PRIMARY KEY (channel_id, message_id, user_id));
 .save discord_bot.db
 ```
 
