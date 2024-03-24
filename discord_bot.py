@@ -409,34 +409,6 @@ def run():
         traceback.print_exc()
         await message.reply('An unknown internal error has occurred.', mention_author=False)
 
-    # Create and manage repeating scheduled events
-    elif command == '$schedule':
-      return  # TODO
-      split_message = message.content.split(maxsplit=2)
-      subcommand = split_message[1] if len(split_message) > 1 else None
-      if subcommand == 'help':
-        await message.reply(f'(wip) Create and manage repeating scheduled events.\n- **$schedule create** creates a new scheduled event..\n- **$schedule edit** changes a scheduled event.\n- **$schedule remove** removes a scheduled event.', mention_author=False)
-        return
-      elif subcommand == 'create':
-        # rrule = dateutil.rrule(dtstart=message.created_at, freq=dateutil.rrule.WEEKLY)
-        # next_event = rrule.after(datetime.datetime.now(datetime.timezone.utc))
-        reply = await message.reply('blah')
-        await reply.add_reaction(EMOTE_GOOMBAPING)
-        this_member = [m for m in client.get_channel(reply.channel.id).members if m.id == client.user.id][0]
-        if reply.channel.permissions_for(this_member).manage_messages:
-          try:
-            await reply.pin()
-          except Exception as e:
-            logging.warning('Failed to pin schedule message to %s', reply.channel.name)
-            logging.exception(e)
-        pass
-      elif subcommand == 'edit':
-        await message.reply('`$schedule edit` is not implemented', mention_author=False)
-      elif subcommand == 'remove':
-        await message.reply('`$schedule remove` is not implemented', mention_author=False)
-      else:
-        await message.reply('I don\'t understand that command! Use `$schedule help` for more information.', mention_author=False)
-
     # :goombaping:
     elif any(mention.id == client.user.id for mention in message.mentions):
       await message.reply(EMOTE_GOOMBAPING)
