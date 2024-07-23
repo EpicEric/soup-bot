@@ -34,7 +34,6 @@ CREATE TABLE dinkdonk_cache(server_id VARCHAR(24) PRIMARY KEY, value INTEGER);
 If you're using Docker, create a Docker Compose deployment in `./compose.yaml` (deploy with `docker compose up --build -d`; optionally can set up a `systemctl` service that runs it on startup):
 
 ```yaml
-version: '3.9'
 services:
   soupbot:
     container_name: soupbot
@@ -43,6 +42,7 @@ services:
     environment:
       SOUPBOT_DISCORD_TOKEN: YOUR_DISCORD_TOKEN
       SOUPBOT_WIT_TOKEN: YOUR_WIT_AI_TOKEN
+      SOUPBOT_CUSTOM_HELLO: "This is the message sent by SoupBot whenever you use the custom command $hello"
     volumes:
       - ./discord_bot.db:/usr/src/app/discord_bot.db
     restart: unless-stopped

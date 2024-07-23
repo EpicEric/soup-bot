@@ -409,6 +409,10 @@ def run():
         traceback.print_exc()
         await message.reply('An unknown internal error has occurred.', mention_author=False)
 
+    # Custom command defined by SOUPBOT_CUSTOM_COMMAND envvar (invoked with $command)
+    elif command in env.CUSTOM:
+        await message.reply(env.CUSTOM[command], mention_author=False)
+
     # :goombaping:
     elif any(mention.id == client.user.id for mention in message.mentions):
       await message.reply(EMOTE_GOOMBAPING)
