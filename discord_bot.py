@@ -3,6 +3,7 @@ import datetime
 import dateutil.rrule
 import dateutil.tz
 import discord
+import json
 import logging as pyLogging
 import random
 import signal
@@ -83,8 +84,8 @@ def run():
           tz = db.get_timezone_for_user_id(message.author.id)
           if tz:
             time_now = datetime.datetime.now(dateutil.tz.tzutc())
-            local_time = datetime.datetime.fromtimestamp(time_now.timestamp(), tz=tz).strftime('%Y-%m-%d at %H:%M (%Z)')
-            await message.reply(f'Your timezone is currently set to `{tz}`. If this is correct, then your local time should be **{local_time}**.\n\nYou can change it with **$settimezone Your/Timezone**, or remove it with **$settimezone clear**.', mention_author=False)
+            local_time = datetime.datetime.fromtimestamp(time_now.timestamp(), tz=dateutil.tz.gettz(tz)).strftime('%Y-%m-%d at %H:%M (%Z)')
+            await message.reply(f'Your timezone is currently set to `{tz}`. If this is correct, then your local time should be **{local_time}**.\n\nYou can change it with **$settimezone Your/Timezone**, or remove it with **$settimezone clear**.\n\nFor a list of valid timezones, check out: https://nodatime.org/TimeZones', mention_author=False)
             return
           else:
             await message.reply(f'You haven\'t selected a timezone yet. You can choose one with **$settimezone Your/Timezone**\n\nFor a list of valid timezones, check out: https://nodatime.org/TimeZones', mention_author=False, suppress_embeds=True)
@@ -408,6 +409,107 @@ def run():
         logging.exception(e)
         traceback.print_exc()
         await message.reply('An unknown internal error has occurred.', mention_author=False)
+
+    elif command in ('$unavailable', '$available'):
+      reply_to = message
+      server_id = message.guild.id
+      messages_to_process: list = [message]
+      # If it's a reply to another message, use that first
+      if message.reference:
+        new_message = message.reference.resolved
+        if isinstance(new_message, discord.Message):
+          messages_to_process.insert(0, new_message)
+      for message in messages_to_process:
+        author = message.author
+        user_id = author.id
+        timestamp = message.created_at
+        tz_name = db.get_timezone_for_user_id(author.id)
+        tz = dateutil.tz.gettz(tz_name if tz_name else "America/Chicago")
+        local_datetime = datetime.datetime.fromtimestamp(timestamp.timestamp(), tz=tz)
+        content = message.content
+        if content[0] == '$':
+          content = content.split(" ", 1)[1].strip()
+        if not content:
+          continue
+        try:
+          processed_results = await nlp.process_time_message(truncate_text(content, 280), local_datetime, nlp.ENT_GRAIN_DATE)
+        except nlp.ProcessTimeMessageException as e:
+          logging.error('Failed to parse message "%s" in %s command', content, command)
+          logging.exception(e)
+          traceback.print_exc()
+          continue
+        if len(processed_results) == 0 or len(processed_results) > 1:
+          continue
+        # Match found, add to DB
+
+        if len(message.mentions) > 0 and message.mentions[0].id != client.user.id:
+          user_id = message.mentions[0].id
+        if len(processed_results) == 0 or len(processed_results[0][1]) == 0:
+          continue
+        timestamp = processed_results[0][1][0]
+        timestamp_unix = timestamp.split(":", 2)[1]
+        on_date = datetime.datetime.fromtimestamp(int(timestamp_unix), tz=tz).date()
+        is_available = command == "$available"
+        db.set_availability_for_user(server_id, user_id, on_date, is_available, content)
+        await message.reply(f'Marked {"you" if reply_to.author.id == user_id else author.display_name} as {"available" if is_available else "unavailable"} on {timestamp}.', mention_author=False)
+        return
+
+      await reply_to.reply('Unable to find a date in this message! Make sure to keep it unambiguous and concise, and don\'t use times.', mention_author=False)
+
+    elif command == '$whoisavailable':
+      server_id = message.guild.id
+      author = message.author
+      content = message.content[15:].strip()
+      timestamp = message.created_at
+      tz_name = db.get_timezone_for_user_id(author.id)
+      tz = dateutil.tz.gettz(tz_name if tz_name else "America/Chicago")
+      local_datetime = datetime.datetime.fromtimestamp(timestamp.timestamp(), tz=tz)
+      try:
+        processed_results = await nlp.process_time_message(truncate_text(content, 280), local_datetime, nlp.ENT_GRAIN_DATE)
+      except nlp.ProcessTimeMessageException as e:
+        logging.error('Failed to parse message "%s" in $whoisavailable command', content)
+        logging.exception(e)
+        traceback.print_exc()
+        await message.reply(str(e), mention_author=False)
+        return
+      if len(processed_results) == 0 or len(processed_results) > 1:
+        await message.reply('Unable to find a date in this message! Make sure to keep it unambiguous and concise, and don\'t use times.', mention_author=False)
+        return
+      timestamp = processed_results[0][1][0]
+      timestamp_unix = timestamp.split(":", 2)[1]
+      on_date = datetime.datetime.fromtimestamp(int(timestamp_unix), tz=tz).date()
+      availabilities = db.get_availabilities_for_date(server_id, on_date)
+      available, unavailable = [], []
+      if len(availabilities) == 0:
+        await message.reply(f'No data for {timestamp} yet.', mention_author=False)
+        return
+      for (user_id, is_available, description) in availabilities:
+        if is_available:
+          available.append({
+            "name": "",
+            "inline": True,
+            "value": f'<@{user_id}> {description}',
+          })
+        else:
+          unavailable.append({
+            "name": "",
+            "inline": True,
+            "value": f'<@{user_id}> {description}',
+          })
+      embeds = []
+      if len(available) > 0:
+        embeds.append(discord.Embed.from_dict({
+          'color': 4845668,
+          'title': '$available',
+          'fields': available,
+        }))
+      if len(unavailable) > 0:
+        embeds.append(discord.Embed.from_dict( {
+          'color': 15747401,
+          'title': '$unavailable',
+          'fields': unavailable,
+        }))
+      await message.reply(f'Here is the data I have for {timestamp} so far:', embeds=embeds)
 
     # Custom command defined by SOUPBOT_CUSTOM_COMMAND envvar (invoked with $command)
     elif command in env.CUSTOM:

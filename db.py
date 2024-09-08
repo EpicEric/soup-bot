@@ -161,3 +161,25 @@ def set_dd_cache(server_id: int, value: Optional[datetime.datetime]):
     cur = conn.cursor()
     cur.execute('INSERT INTO dinkdonk_cache (server_id, value) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET value = excluded.value', (str(server_id), utils.datetime_to_timestamp(value) if value else None))
     cur.close()
+
+def set_availability_for_user(server_id: int, user_id: int, on_date: datetime.date, is_available: bool, description: str, timestamp: Optional[datetime.datetime] = None):
+  if not conn:
+    raise ValueError('DB not initialized!')
+  if not timestamp:
+    timestamp = datetime.datetime.utcnow()
+  else:
+    timestamp = datetime.datetime.utcfromtimestamp(timestamp.timestamp())
+  with conn:
+    cur = conn.cursor()
+    cur.execute('INSERT INTO availability (server_id, user_id, on_date, is_available, description, last_modified) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(server_id, user_id, on_date) DO UPDATE SET is_available = excluded.is_available, description = excluded.description, last_modified = excluded.last_modified', (str(server_id), str(user_id), on_date.isoformat(), int(is_available), description, timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')))
+    cur.close()
+
+def get_availabilities_for_date(server_id: int, on_date: datetime.date):
+  if not conn:
+    raise ValueError('DB not initialized!')
+  with conn:
+    cur = conn.cursor()
+    res = cur.execute('SELECT user_id, is_available, description FROM availability WHERE server_id = ? AND on_date = ?', (str(server_id), on_date))
+    values: List[Tuple[str, int, str]] = res.fetchall()
+    cur.close()
+    return values

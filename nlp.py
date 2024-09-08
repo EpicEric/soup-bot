@@ -36,7 +36,7 @@ class Wit:
 ENT_DATETIME_KEY = 'wit$datetime:datetime'
 ENT_GRAIN_DATE = ['day']
 ENT_GRAIN_TIME = ['hour', 'minute', 'second']
-ENT_GRAIN_VALID = [*ENT_GRAIN_DATE, *ENT_GRAIN_TIME]
+ENT_GRAIN_DATETIME = [*ENT_GRAIN_DATE, *ENT_GRAIN_TIME]
 
 
 class ProcessTimeMessageException(ValueError):
@@ -47,9 +47,11 @@ def init():
   global wit
   wit = Wit(env.WIT_TOKEN)
 
-async def process_time_message(message, local_datetime_with_tz: datetime.datetime):
+async def process_time_message(message, local_datetime_with_tz: datetime.datetime, valid_grains = None):
   if not wit:
     raise ValueError('NLP not initialized!')
+  if not valid_grains:
+    valid_grains = ENT_GRAIN_DATETIME
 
   tz = local_datetime_with_tz.tzinfo
 
@@ -91,7 +93,7 @@ async def process_time_message(message, local_datetime_with_tz: datetime.datetim
         grain = ent['grain']
         is_interval = False
         values = ent['values']
-      if grain in ENT_GRAIN_VALID:
+      if grain in valid_grains:
         data_to_process.append((body, grain, is_interval, values))
 
     # Convert times
@@ -119,7 +121,7 @@ async def process_time_message(message, local_datetime_with_tz: datetime.datetim
             values.append(f'<t:{utils.datetime_to_timestamp(date_value)}{timestamp_suffix}>')
 
       # If it's a time
-      else:
+      elif grain in ENT_GRAIN_TIME:
         # Format with date and time by default
         timestamp_suffix = ':f'
         # Check which timestamp suffix should be used

@@ -1,0 +1,14 @@
+services:
+  soupbot:
+    container_name: soupbot
+    build:
+      context: .
+    # environment:
+    #   - SOUPBOT_DISCORD_TOKEN=...
+    #   - SOUPBOT_WIT_TOKEN=...
+    #   - SOUPBOT_CUSTOM_...=...
+    env_file:
+      - ./discord_bot.env
+    volumes:
+      - ./discord_bot.db:/usr/src/app/discord_bot.db
+    restart: unless-stopped
