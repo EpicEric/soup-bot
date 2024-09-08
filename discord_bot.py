@@ -448,7 +448,7 @@ def run():
           continue
         timestamp = processed_results[0][1][0]
         timestamp_unix = timestamp.split(":", 2)[1]
-        on_date = datetime.datetime.fromtimestamp(int(timestamp_unix), tz=tz).date()
+        on_date = datetime.datetime.fromtimestamp(int(timestamp_unix), tz=tz).astimezone(datetime.timezone.utc).date()
         is_available = command == "$available"
         db.set_availability_for_user(server_id, user_id, on_date, is_available, content)
         await message.reply(f'Marked {"you" if reply_to.author.id == user_id else author.display_name} as {"available" if is_available else "unavailable"} on {timestamp}.', mention_author=False)
@@ -477,7 +477,7 @@ def run():
         return
       timestamp = processed_results[0][1][0]
       timestamp_unix = timestamp.split(":", 2)[1]
-      on_date = datetime.datetime.fromtimestamp(int(timestamp_unix), tz=tz).date()
+      on_date = datetime.datetime.fromtimestamp(int(timestamp_unix), tz=tz).astimezone(datetime.timezone.utc).date()
       availabilities = db.get_availabilities_for_date(server_id, on_date)
       available, unavailable = [], []
       if len(availabilities) == 0:
@@ -487,13 +487,13 @@ def run():
         if is_available:
           available.append({
             "name": "",
-            "inline": True,
+            "inline": False,
             "value": f'<@{user_id}> {description}',
           })
         else:
           unavailable.append({
             "name": "",
-            "inline": True,
+            "inline": False,
             "value": f'<@{user_id}> {description}',
           })
       embeds = []
@@ -509,7 +509,7 @@ def run():
           'title': '$unavailable',
           'fields': unavailable,
         }))
-      await message.reply(f'Here is the data I have for {timestamp} so far:', embeds=embeds)
+      await message.reply(f'Here is the data I have for {timestamp} so far:', embeds=embeds, mention_author=False)
 
     # Custom command defined by SOUPBOT_CUSTOM_COMMAND envvar (invoked with $command)
     elif command in env.CUSTOM:

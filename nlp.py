@@ -61,7 +61,7 @@ async def process_time_message(message, local_datetime_with_tz: datetime.datetim
     logging.error('WIT API error')
     logging.exception(e)
     traceback.print_exc()
-    logging.error('API error: %s', doc)
+    logging.error('API error')
     raise ProcessTimeMessageException('The API has returned an error! Please try again later.')
 
   if 'entities' not in doc:

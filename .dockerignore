@@ -1,5 +1,5 @@
 venv/
 __pycache__/
-trash/
 discord_bot.db
+*.env
 compose.yaml
