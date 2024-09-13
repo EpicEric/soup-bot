@@ -34,9 +34,9 @@ class Wit:
         return json_body
 
 ENT_DATETIME_KEY = 'wit$datetime:datetime'
-ENT_GRAIN_DATE = ['day']
-ENT_GRAIN_TIME = ['hour', 'minute', 'second']
-ENT_GRAIN_DATETIME = [*ENT_GRAIN_DATE, *ENT_GRAIN_TIME]
+ENT_GRAIN_DATE = {'day'}
+ENT_GRAIN_TIME = {'hour', 'minute', 'second'}
+ENT_GRAIN_DATETIME = ENT_GRAIN_DATE | ENT_GRAIN_TIME
 
 
 class ProcessTimeMessageException(ValueError):
@@ -52,6 +52,10 @@ async def process_time_message(message, local_datetime_with_tz: datetime.datetim
     raise ValueError('NLP not initialized!')
   if not valid_grains:
     valid_grains = ENT_GRAIN_DATETIME
+  elif type(valid_grains) is str:
+    valid_grains = set([valid_grains])
+  elif type(valid_grains) is not set:
+    valid_grains = set(valid_grains)
 
   tz = local_datetime_with_tz.tzinfo
 
@@ -93,7 +97,7 @@ async def process_time_message(message, local_datetime_with_tz: datetime.datetim
         grain = ent['grain']
         is_interval = False
         values = ent['values']
-      if grain in valid_grains:
+      if grain in ENT_GRAIN_DATETIME:
         data_to_process.append((body, grain, is_interval, values))
 
     # Convert times
@@ -113,11 +117,24 @@ async def process_time_message(message, local_datetime_with_tz: datetime.datetim
         timestamp_suffix = ':D'
         for value in ent_values:
           if is_interval:
-            date_value_from = datetime.datetime.fromisoformat(value['from']['value']).replace(hour=hour, minute=minute, second=second)
-            date_value_to = datetime.datetime.fromisoformat(value['to']['value']).replace(hour=hour, minute=minute, second=second)
-            values.append(f'<t:{utils.datetime_to_timestamp(date_value_from)}{timestamp_suffix}> to <t:{utils.datetime_to_timestamp(date_value_to - exclusive_timedelta)}{timestamp_suffix}>')
+            datetime_from = datetime.datetime.fromisoformat(value['from']['value']).replace(hour=hour, minute=minute, second=second)
+            datetime_to = datetime.datetime.fromisoformat(value['to']['value']).replace(hour=hour, minute=minute, second=second)
+            values.append(f'<t:{utils.datetime_to_timestamp(datetime_from)}{timestamp_suffix}> to <t:{utils.datetime_to_timestamp(datetime_to - exclusive_timedelta)}{timestamp_suffix}>')
           else:
             date_value = datetime.datetime.fromisoformat(value['value']).replace(hour=hour, minute=minute, second=second)
+            values.append(f'<t:{utils.datetime_to_timestamp(date_value)}{timestamp_suffix}>')
+
+      # If it's a time but we only care about days
+      elif grain in ENT_GRAIN_TIME and 'day' in valid_grains and valid_grains.isdisjoint(ENT_GRAIN_TIME):
+        timestamp_suffix = ':D'
+        for value in ent_values:
+          if is_interval:
+            datetime_from = datetime.datetime.fromisoformat(value['from']['value'])
+            datetime_to = datetime.datetime.fromisoformat(value['to']['value']) - datetime.timedelta(seconds=1)
+            if datetime_from.date() == datetime_to.date():
+              values.append(f'<t:{utils.datetime_to_timestamp(datetime_from)}{timestamp_suffix}>')
+          else:
+            date_value = datetime.datetime.fromisoformat(value['value'])
             values.append(f'<t:{utils.datetime_to_timestamp(date_value)}{timestamp_suffix}>')
 
       # If it's a time
