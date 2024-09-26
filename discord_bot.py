@@ -424,7 +424,7 @@ def run():
         user_id = author.id
         timestamp = message.created_at
         tz_name = db.get_timezone_for_user_id(author.id)
-        tz = dateutil.tz.gettz(tz_name if tz_name else "America/Chicago")
+        tz = dateutil.tz.gettz(tz_name if tz_name else "America/Los_Angeles")
         local_datetime = datetime.datetime.fromtimestamp(timestamp.timestamp(), tz=tz)
         content = message.content
         if content[0] == '$':
@@ -441,19 +441,17 @@ def run():
         if len(processed_results) == 0 or len(processed_results) > 1:
           continue
         # Match found, add to DB
-
         if len(message.mentions) > 0 and message.mentions[0].id != client.user.id:
           user_id = message.mentions[0].id
         if len(processed_results) == 0 or len(processed_results[0][1]) == 0:
           continue
         timestamp = processed_results[0][1][0]
         timestamp_unix = timestamp.split(":", 2)[1]
-        on_date = datetime.datetime.fromtimestamp(int(timestamp_unix), tz=tz).astimezone(datetime.timezone.utc).date()
+        on_date = datetime.datetime.fromtimestamp(int(timestamp_unix), tz=tz).astimezone(dateutil.tz.gettz("America/Anchorage")).date()
         is_available = command == "$available"
         db.set_availability_for_user(server_id, user_id, on_date, is_available, content)
         await message.reply(f'Marked {"you" if reply_to.author.id == user_id else author.display_name} as {"available" if is_available else "unavailable"} on {timestamp}.', mention_author=False)
         return
-
       await reply_to.reply('Unable to find a date in this message! Make sure to keep it unambiguous and concise, and don\'t use times.', mention_author=False)
 
     elif command == '$whoisavailable':
@@ -462,7 +460,7 @@ def run():
       content = message.content[15:].strip()
       timestamp = message.created_at
       tz_name = db.get_timezone_for_user_id(author.id)
-      tz = dateutil.tz.gettz(tz_name if tz_name else "America/Chicago")
+      tz = dateutil.tz.gettz(tz_name if tz_name else "America/Anchorage")
       local_datetime = datetime.datetime.fromtimestamp(timestamp.timestamp(), tz=tz)
       try:
         processed_results = await nlp.process_time_message(truncate_text(content, 280), local_datetime, nlp.ENT_GRAIN_DATE)
@@ -477,7 +475,7 @@ def run():
         return
       timestamp = processed_results[0][1][0]
       timestamp_unix = timestamp.split(":", 2)[1]
-      on_date = datetime.datetime.fromtimestamp(int(timestamp_unix), tz=tz).astimezone(datetime.timezone.utc).date()
+      on_date = datetime.datetime.fromtimestamp(int(timestamp_unix), tz=tz).astimezone(dateutil.tz.gettz("America/Anchorage")).date()
       availabilities = db.get_availabilities_for_date(server_id, on_date)
       available, unavailable = [], []
       if len(availabilities) == 0:
