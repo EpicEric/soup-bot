@@ -104,7 +104,7 @@ def get_dinkdonk_should_alert(user_id: int, server_id: int):
     cur.close()
     return bool(value[0]) if value else False
 
-def check_if_has_reset_privilege(user_id: int, server_id: int) -> bool:
+def check_if_has_reset_privilege(user_id: int, server_id: int, threshold: int = None) -> bool:
   if not conn:
     raise ValueError('DB not initialized!')
   with conn:
@@ -118,16 +118,8 @@ def check_if_has_reset_privilege(user_id: int, server_id: int) -> bool:
     max_user_id, max_count = values[0]
     for curr_user_id, curr_count in values[1:]:
       if curr_count >= max_count:
-        # Check if our user was found before, in which case, someone else is higher or tied
-        if max_user_id == user_id:
-          return False
-        # If it's a higher count, consider that user + count instead
-        if curr_count > max_count:
-          max_user_id, max_count = curr_user_id, curr_count
-        # If it's not a higher count, but it is our user, then they're tied, therefore ineligible for a reset
-        elif curr_user_id == user_id:
-          return False
-    return max_user_id == user_id
+        max_user_id, max_count = curr_user_id, curr_count
+    return (threshold is not None and max_count >= threshold) or max_user_id == user_id
 
 def clear_server_dinkdonks(server_id: int, timestamp: Optional[datetime.datetime] = None):
   if not conn:

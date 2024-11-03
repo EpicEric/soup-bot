@@ -15,6 +15,7 @@ import nlp
 import utils
 
 DINKDONK_CACHE_LIMIT = datetime.timedelta(minutes=30)
+DINKDONK_THRESHOLD = 80
 
 EMOTE_DINKDONK = '<a:DinkDonk:1102105207439110174>'
 EMOTE_GOOMBAPING = '<:goombaping:1102105208760320000>'
@@ -235,13 +236,15 @@ def run():
           # Pick a random non-bot channel member
           random.seed(message.id + utils.datetime_to_timestamp(message.created_at))
           picked_member = random.sample(channel_members, 1)[0]
-          could_reset_dds = db.check_if_has_reset_privilege(picked_member.id, server_id)
+          could_reset_dds = db.check_if_has_reset_privilege(picked_member.id, server_id, None)
           # Persist increased count
           dd_count = db.save_dinkdonk_for_user(picked_member.id, server_id, from_user_id=message.author.id)
           value_prefix = ''
-          if could_reset_dds:
+          if dd_count >= DINKDONK_THRESHOLD:
+            value_prefix = 'Too many dinkdonks!!! Now *anybody* can use `$dinkdonk reset`.\n'
+          elif could_reset_dds:
             value_prefix = 'This user can still use `$dinkdonk reset`. Just saying...\n'
-          elif db.check_if_has_reset_privilege(picked_member.id, server_id):
+          elif db.check_if_has_reset_privilege(picked_member.id, server_id, None):
             value_prefix = 'This user can now use `$dinkdonk reset`, and reset all dinkdonks in this server while they\'re ahead in first place!\n'
           snarky_count_comment = ''
           if dd_count == 69:
@@ -328,7 +331,7 @@ def run():
         try:
           user_id = message.author.id
           server_id = message.guild.id
-          can_reset_dds = db.check_if_has_reset_privilege(user_id, server_id)
+          can_reset_dds = db.check_if_has_reset_privilege(user_id, server_id, DINKDONK_THRESHOLD)
           if can_reset_dds:
             timestamp = message.created_at
             db.set_dd_cache(server_id, None)
